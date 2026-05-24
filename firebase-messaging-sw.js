@@ -18,8 +18,8 @@ messaging.onBackgroundMessage(function(payload) {
   const body   = payload.notification ? payload.notification.body  : 'Listen er oppdatert!';
   self.registration.showNotification(tittel, {
     body: body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
     tag: 'handleliste-varsel',
     renotify: true
   });

@@ -1,6 +1,6 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v1';
-const CACHE_URLS = ['/'];
+const CACHE_NAME = 'matplan-v2';
+const CACHE_URLS = ['./'];
 
 self.addEventListener('install', function(event) {
   event.waitUntil(

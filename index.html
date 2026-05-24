@@ -12,6 +12,7 @@
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#27ae60">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -2867,7 +2868,7 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/service-worker.js')
+      navigator.serviceWorker.register('./service-worker.js')
         .then(function(reg) { console.log('Service worker registrert:', reg.scope); })
         .catch(function(err) { console.log('Service worker feilet:', err); });
     });
