@@ -1,0 +1,23 @@
+# Backups og arkiv
+_arkiv/
+Matplan*/
+*.zip
+*.bak
+*.backup
+
+# OS-genererte filer
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Lokale Claude/AI-state
+.claude/
+
+# Logger
+*.log
