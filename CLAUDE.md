@@ -22,17 +22,20 @@ Matplan/                        ← disk-mappe (beholdes som "Matplan")
 └── _arkiv/                     ← gamle versjoner og backup-filer, ikke rediger
 ```
 
-## Deploy-mappen – VIKTIG
+## Deploy-flyt: GitHub + GitHub Pages
 
-`deploy/` skal alltid være et speil av disse filene fra prosjektroten:
-- `index.html`
-- `manifest.json`
-- `service-worker.js`
-- `firebase-messaging-sw.js`
-- `icon-192.png`
-- `icon-512.png`
+Prosjektet ligger på GitHub: **https://github.com/Martinsapps/Handlekurven**
+Hostes via GitHub Pages: **https://martinsapps.github.io/Handlekurven/**
 
-**Hver gang du endrer noen av disse filene, må du også kopiere den endrede versjonen til `deploy/`.** Brukeren laster opp innholdet i `deploy/` til Netlify, så hvis mappen er utdatert, ruller endringene ikke ut. Sjekk gjerne i slutten av en endring at deploy-mappen er synkronisert.
+**Hver endring du gjør skal automatisk pushes til GitHub.** Brukeren har bedt om dette eksplisitt – ingen manuell deploy lenger. Etter en logisk arbeidsenhet (en bug-fiks, en feature, en navneendring) skal du:
+
+1. Oppdatere `deploy/`-mappen hvis du endret en av de deployerbare filene (`index.html`, `manifest.json`, `service-worker.js`, `firebase-messaging-sw.js`, `icon-192.png`, `icon-512.png`) – brukeren har valgt å beholde `deploy/`-strukturen for nå.
+2. Stage og committe endringene med en beskrivende commit-melding på norsk.
+3. `git push` til origin/main.
+
+Git-identitet er konfigurert lokalt i repoet (`martinsapps` / `mnygaard1995@gmail.com`).
+
+**Pages-kilde:** GitHub Pages støtter kun root eller `/docs`. Brukeren ønsker å serve fra `deploy/`, så her må de selv ha satt opp dette (enten via GitHub Action som publiserer `deploy/` til `gh-pages`-branch, eller ved å sette Pages-kilde til root – i sistnevnte tilfelle serves `index.html` fra rotmappen, ikke fra `deploy/`).
 
 ## Hovedfilen: index.html
 
