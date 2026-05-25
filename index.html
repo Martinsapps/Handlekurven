@@ -1970,7 +1970,16 @@
 
   function hentOgLagreToken() {
     if (!messaging) return;
-    messaging.getToken({ vapidKey: VAPID_KEY }).then(function(token) {
+    if (!('serviceWorker' in navigator)) {
+      loggFeil('FCM: serviceWorker ikke støttet', 'fcm', '');
+      return;
+    }
+    // Registrer firebase-messaging-sw.js eksplisitt med relativ path så GitHub Pages-prosjektsiden
+    // ikke prøver å laste fra rot. Send registreringen til getToken slik at Firebase ikke
+    // forsøker auto-registrering på feil URL.
+    navigator.serviceWorker.register('./firebase-messaging-sw.js').then(function(reg) {
+      return messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    }).then(function(token) {
       if (token && database) {
         // Lagre token under en fast nøkkel per enhet (bruker tidsstempel som nøkkel første gang)
         var tokenNøkkel = localStorage.getItem('matplan-token-nøkkel');
