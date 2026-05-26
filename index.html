@@ -1436,10 +1436,9 @@
       if (offlineKø.filter(function(e) { return e.type === 'basisliste'; }).length === 0) {
         basisVarer = data || [];
         localStorage.setItem('matplan-basis-' + id, JSON.stringify(basisVarer));
-        // Hvis sidebar/basis-fanen er åpen, oppdater visningen
-        if (document.getElementById('sidebar').classList.contains('åpen')) {
-          tegnBasisListe();
-        }
+        // Re-render alltid – DOM-en eksisterer i sidebaren uansett om den er åpen eller ikke,
+        // så det er trygt og enkelt å holde den oppdatert kontinuerlig.
+        tegnBasisListe();
       }
     });
   }
