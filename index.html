@@ -1421,18 +1421,25 @@
       database.ref('lister/' + (aktivListeId || id) + '/varer').off('value', aktivFirebaseLytter);
     }
     aktivFirebaseLytter = function(snap) {
-      var data = snap.val();
-      if (data && offlineKø.filter(function(e) { return e.type === 'handleliste'; }).length === 0) {
+      // snap.val() er null når listen er helt tom (Firebase pruner tomme verdier).
+      // Vi må fortsatt oppdatere UI for å reflektere tømming fra annen enhet.
+      var data = snap.val() || {};
+      if (offlineKø.filter(function(e) { return e.type === 'handleliste'; }).length === 0) {
         byggListeFraData(data);
         localStorage.setItem('matplan-varer-' + id, JSON.stringify(data));
       }
     };
     database.ref('lister/' + id + '/varer').on('value', aktivFirebaseLytter);
     database.ref('lister/' + id + '/basis').on('value', function(snap) {
+      // Samme null-håndtering for basis: en tom basisliste kommer som null fra Firebase.
       var data = snap.val();
-      if (data && offlineKø.filter(function(e) { return e.type === 'basisliste'; }).length === 0) {
-        basisVarer = data;
+      if (offlineKø.filter(function(e) { return e.type === 'basisliste'; }).length === 0) {
+        basisVarer = data || [];
         localStorage.setItem('matplan-basis-' + id, JSON.stringify(basisVarer));
+        // Hvis sidebar/basis-fanen er åpen, oppdater visningen
+        if (document.getElementById('sidebar').classList.contains('åpen')) {
+          tegnBasisListe();
+        }
       }
     });
   }
