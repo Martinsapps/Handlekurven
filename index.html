@@ -444,7 +444,10 @@
       .basisliste-knapp, .basisliste-panel, .kontrollrad, .legg-til-boks,
       .duplikat-advarsel, .sorter-knapp, .flytt-knapp, .notat-knapp,
       .slett, .skriv-ut-knapp, .tøm-knapp, .rediger-panel,
-      .flytt-meny, .bekreft-boks { display: none !important; }
+      .flytt-meny, .bekreft-boks, .sidebar, .sidebar-overlay,
+      .modal-overlay, .bekreft-overlay, .sidebar-knapp,
+      .tilbake-knapp, .teller-bar, .undertittel, .feillogg-knapp,
+      .feillogg-panel { display: none !important; }
       .container { box-shadow: none; }
       li.skjult { display: flex !important; }
       .kategori.tom { display: block !important; }
@@ -891,7 +894,7 @@
   </div>
 
   <div class="sidebar-innhold" id="fane-skriv">
-    <button class="skriv-ut-knapp" onclick="window.print()" style="margin-top:0;">🖨 Skriv ut handleliste</button>
+    <button class="skriv-ut-knapp" onclick="skrivUtHandleliste()" style="margin-top:0;">🖨 Skriv ut handleliste</button>
   </div>
 
   <div class="sidebar-innhold" id="fane-varsel">
@@ -1480,6 +1483,14 @@
       tegnForslagListe();
       tegnEgneKategorierSidebar();
     }
+  }
+
+  function skrivUtHandleliste() {
+    // Lukk sidebar først så brukeren ikke sitter med sidebaren åpen etter print
+    document.getElementById('sidebar').classList.remove('åpen');
+    document.getElementById('sidebar-overlay').classList.remove('synlig');
+    // CSS @media print skjuler uansett sidebar/overlay/modaler under selve utskriften
+    window.print();
   }
 
   // ==============================
