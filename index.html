@@ -525,6 +525,30 @@
     }
     .slett-kategori-knapp:hover { color: var(--red); }
 
+    /* SIDEBAR – liste over egne kategorier */
+    .sidebar-kat-liste { margin-bottom: 12px; }
+    .sidebar-kat-rad {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: 14px; margin-bottom: 6px;
+      background: var(--bg); border: 1px solid var(--border);
+    }
+    .sidebar-kat-badge {
+      flex: 1; font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 4px 12px; border-radius: 14px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sidebar-kat-slett {
+      background: none; border: none; color: var(--muted);
+      font-size: 18px; cursor: pointer; padding: 2px 6px;
+      border-radius: 8px; flex-shrink: 0; line-height: 1;
+    }
+    .sidebar-kat-slett:hover { color: var(--red); background: var(--red-lt); }
+    .sidebar-kat-tom {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-style: italic; padding: 8px 0;
+    }
+
     /* SIDEBAR */
     .sidebar-overlay {
       display: none; position: fixed; inset: 0;
@@ -849,6 +873,7 @@
 
   <div class="sidebar-innhold" id="fane-kategorier">
     <div id="egne-kategorier-sidebar">
+      <div class="sidebar-kat-liste" id="sidebar-kat-liste"></div>
       <button class="ny-kategori-knapp" onclick="toggleNyKategoriPanel()">
         <span style="font-size:16px;line-height:1">+</span> Legg til egen kategori
       </button>
@@ -1121,6 +1146,7 @@
       document.getElementById('fane-' + f + '-knapp').classList.toggle('aktiv', f === fane);
     });
     if (fane === 'basis') { tegnBasisListe(); tegnForslagListe(); }
+    if (fane === 'kategorier') tegnEgneKategorierSidebar();
     if (fane === 'varsel') sjekkVarselStatus();
   }
 
@@ -1452,6 +1478,7 @@
     if (document.getElementById('sidebar').classList.contains('åpen')) {
       tegnBasisListe();
       tegnForslagListe();
+      tegnEgneKategorierSidebar();
     }
   }
 
@@ -1500,6 +1527,7 @@
     byggEgenKategoriDOM(id, navn, farge);
     oppdaterKategoriVelgere();
     lagreEgneKategorier();
+    tegnEgneKategorierSidebar();
     toggleNyKategoriPanel();
   }
 
@@ -1552,6 +1580,7 @@
     egneKategorier = egneKategorier.filter(function(k) { return k.id !== id; });
     oppdaterKategoriVelgere();
     lagreEgneKategorier();
+    tegnEgneKategorierSidebar();
     oppdaterTeller();
     oppdaterKategoriSynlighet();
     lagreAlt();
@@ -1584,6 +1613,34 @@
       });
       oppdaterKategoriVelgere();
     }
+    tegnEgneKategorierSidebar();
+  }
+
+  function tegnEgneKategorierSidebar() {
+    var container = document.getElementById('sidebar-kat-liste');
+    if (!container) return;
+    container.innerHTML = '';
+    if (egneKategorier.length === 0) {
+      container.innerHTML = '<div class="sidebar-kat-tom">Ingen egne kategorier ennå</div>';
+      return;
+    }
+    egneKategorier.forEach(function(k) {
+      var div = document.createElement('div');
+      div.className = 'sidebar-kat-rad';
+      var badge = document.createElement('span');
+      badge.className = 'sidebar-kat-badge';
+      badge.style.background = k.farge.bg;
+      badge.style.color = k.farge.tekst;
+      badge.textContent = k.navn;
+      var slett = document.createElement('button');
+      slett.className = 'sidebar-kat-slett';
+      slett.title = 'Slett kategori';
+      slett.textContent = '×';
+      slett.addEventListener('click', function() { slettEgenKategori(k.id); });
+      div.appendChild(badge);
+      div.appendChild(slett);
+      container.appendChild(div);
+    });
   }
 </script>
 
@@ -2533,10 +2590,13 @@
       var vare = basisVarer[i];
       var div  = document.createElement('div');
       div.className = 'basis-vare';
+      // Vis emoji for predefinerte kategorier, navnet for egne kategorier
+      var katEgen = egneKategorier.find(function(k) { return k.id === vare.kategori; });
+      var katVis = katNavn[vare.kategori] || (katEgen ? katEgen.navn : '');
       div.innerHTML =
         '<span class="basis-sjekk" onclick="toggleBasis(this)"></span>' +
         '<span class="basis-vare-navn">' + vare.navn + '</span>' +
-        '<span class="basis-kat">' + (katNavn[vare.kategori] || '') + '</span>' +
+        '<span class="basis-kat">' + katVis + '</span>' +
         '<button class="basis-notat-knapp" onclick="toggleBasisMerknad(this)" title="Legg til merknad">📝</button>' +
         '<button class="basis-slett" onclick="fjernFraBasis(' + i + ')">×</button>' +
         (vare.merknad ? '<span class="basis-merknad-tekst">' + vare.merknad + '</span>' : '') +
@@ -2586,11 +2646,12 @@
     var navn  = input.value.trim();
     navn = navn.charAt(0).toUpperCase() + navn.slice(1);
     if (!navn) return;
-    var forslag = finnKategori(navn);
-    var kategori = forslag || document.getElementById('basis-kat-velg').value;
+    // Bruk det brukeren har valgt i nedtrekksmenyen. Auto-forslag (finnKategori) kjører
+    // allerede via foreslåBasisKategori og oppdaterer dropdown mens man skriver, men
+    // brukerens eksplisitte valg skal alltid vinne.
+    var kategori = document.getElementById('basis-kat-velg').value;
     basisVarer.push({ navn: navn, kategori: kategori });
     input.value = '';
-    document.getElementById('basis-kat-velg').value = kategori;
     lagreAlt();
     tegnBasisListe();
   }
