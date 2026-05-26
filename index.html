@@ -1486,12 +1486,34 @@
   }
 
   function skrivUtHandleliste() {
-    // Lukk sidebar først så brukeren ikke sitter med sidebaren åpen etter print
+    // Lukk sidebar slik at brukeren ikke sitter med den åpen etter print
     document.getElementById('sidebar').classList.remove('åpen');
     document.getElementById('sidebar-overlay').classList.remove('synlig');
-    // CSS @media print skjuler uansett sidebar/overlay/modaler under selve utskriften
     window.print();
   }
+
+  // Sikre at sidebar/overlays er fullstendig usynlige i alle print-situasjoner
+  // (iOS Safari respekterer ikke alltid @media print for position:fixed-elementer).
+  // beforeprint kjøres uansett om print starter via knappen eller browser-meny.
+  var printSkjul = ['sidebar', 'sidebar-overlay', 'ny-liste-modal', 'bekreft-overlay', 'feillogg-panel'];
+  window.addEventListener('beforeprint', function() {
+    printSkjul.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.dataset.prevDisplay = el.style.display || '';
+        el.style.display = 'none';
+      }
+    });
+  });
+  window.addEventListener('afterprint', function() {
+    printSkjul.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.style.display = el.dataset.prevDisplay || '';
+        delete el.dataset.prevDisplay;
+      }
+    });
+  });
 
   // ==============================
   // EGNE KATEGORIER
