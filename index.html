@@ -2584,6 +2584,37 @@
   // ==============================
   // DUPLIKAT-SJEKK
   // ==============================
+  // Levenshtein-distanse: antall tegn-endringer (innsetting, sletting, erstatning)
+  // som skal til for å gjøre a om til b. Brukes til å oppdage typo-er og bøyninger.
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    var prev = [];
+    for (var j = 0; j <= b.length; j++) prev[j] = j;
+    for (var i = 1; i <= a.length; i++) {
+      var curr = [i];
+      for (j = 1; j <= b.length; j++) {
+        var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+        curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+      }
+      prev = curr;
+    }
+    return prev[b.length];
+  }
+
+  // Returnerer true hvis to ord er "like nok" til å foreslås som duplikat.
+  // Begge må være 5+ tegn (kortere gir for mange falske positive).
+  // Tillater 2 endringer for 5–9 tegn, 3 for 10+ tegn.
+  function erLignende(a, b) {
+    if (a.length < 5 || b.length < 5) return false;
+    if (Math.abs(a.length - b.length) > 3) return false;
+    var d = levenshtein(a, b);
+    if (d === 0) return false;
+    var grense = Math.max(a.length, b.length) >= 10 ? 3 : 2;
+    return d <= grense;
+  }
+
   function sjekkDuplikat(input) {
     var tekst    = input.value.trim().toLowerCase();
     var advarsel = document.getElementById('duplikat-advarsel');
@@ -2592,7 +2623,12 @@
     document.querySelectorAll('.vare-tekst').forEach(function(el) {
       var n = el.textContent.trim(), l = n.toLowerCase();
       if (l === tekst) eksakt = n;
-      else if (!delvis && (l.indexOf(tekst) !== -1 || tekst.indexOf(l) !== -1)) delvis = n;
+      else if (!delvis) {
+        // Først substring-match (rask), så lignende-match (Levenshtein, fanger
+        // bøyninger som kake/kakene/kaker og typo-er som Kjøtdeig/Kjøttdeig).
+        if (l.indexOf(tekst) !== -1 || tekst.indexOf(l) !== -1) delvis = n;
+        else if (erLignende(l, tekst)) delvis = n;
+      }
     });
     if (eksakt) {
       advarsel.innerHTML = '⚠️ <strong>' + eksakt + '</strong> er allerede på listen.';
