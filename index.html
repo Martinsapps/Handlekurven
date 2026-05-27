@@ -2728,9 +2728,13 @@
       var listKat = ul ? ul.id : null;
       var sammeKategori = !listKat || typedKat === 'diverse' || typedKat === listKat;
       if (!sammeKategori) return;
-      // Først substring-match (rask), så lignende-match (Levenshtein, fanger
-      // bøyninger som kake/kakene/kaker og typo-er som Kjøtdeig/Kjøttdeig).
-      if (l.indexOf(tekst) !== -1 || tekst.indexOf(l) !== -1) delvis = n;
+      // Substring kun når det BRUKEREN skriver inneholder hele den eksisterende
+      // varen (f.eks. 'Kjøttdeig 500g' når 'Kjøttdeig' ligger der). Vi gjør IKKE
+      // motsatt retning, fordi det fyrer feilaktig under prefiks-skriving
+      // (f.eks. 'kjøtt' fanger 'Kjøttdeig' selv om man er på vei mot 'Kjøttboller').
+      // Levenshtein fanger fortsatt typo-er (Kjøtdeig→Kjøttdeig) og bøyninger
+      // (Fiskekaker→Fiskekakene).
+      if (tekst.length >= l.length && tekst.indexOf(l) !== -1) delvis = n;
       else if (erLignende(l, tekst)) delvis = n;
     });
     if (eksakt) {
