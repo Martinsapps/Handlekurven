@@ -2619,16 +2619,24 @@
     var tekst    = input.value.trim().toLowerCase();
     var advarsel = document.getElementById('duplikat-advarsel');
     if (tekst.length < 2) { advarsel.classList.remove('synlig'); input.classList.remove('duplikat-felt'); return; }
+    // Hvilken kategori hører teksten til? 'diverse' = ukjent (typo eller uvanlig vare).
+    // For ukjente ord tillater vi lignende-match for å fange typo-er.
+    // For kjente ord krever vi samme kategori, slik at 'Mel' (basis) og 'Melk' (meieri)
+    // ikke trigger varsel selv om de matcher som substring.
+    var typedKat = finnKategori(tekst) || 'diverse';
     var eksakt = null, delvis = null;
     document.querySelectorAll('.vare-tekst').forEach(function(el) {
       var n = el.textContent.trim(), l = n.toLowerCase();
-      if (l === tekst) eksakt = n;
-      else if (!delvis) {
-        // Først substring-match (rask), så lignende-match (Levenshtein, fanger
-        // bøyninger som kake/kakene/kaker og typo-er som Kjøtdeig/Kjøttdeig).
-        if (l.indexOf(tekst) !== -1 || tekst.indexOf(l) !== -1) delvis = n;
-        else if (erLignende(l, tekst)) delvis = n;
-      }
+      if (l === tekst) { eksakt = n; return; }
+      if (delvis) return;
+      var ul = el.closest('ul');
+      var listKat = ul ? ul.id : null;
+      var sammeKategori = !listKat || typedKat === 'diverse' || typedKat === listKat;
+      if (!sammeKategori) return;
+      // Først substring-match (rask), så lignende-match (Levenshtein, fanger
+      // bøyninger som kake/kakene/kaker og typo-er som Kjøtdeig/Kjøttdeig).
+      if (l.indexOf(tekst) !== -1 || tekst.indexOf(l) !== -1) delvis = n;
+      else if (erLignende(l, tekst)) delvis = n;
     });
     if (eksakt) {
       advarsel.innerHTML = '⚠️ <strong>' + eksakt + '</strong> er allerede på listen.';
