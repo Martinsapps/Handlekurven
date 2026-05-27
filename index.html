@@ -1328,10 +1328,16 @@
 
   function åpneRedigerListeModal(id, navn) {
     redigerListeId = id;
-    document.getElementById('modal-tittel').textContent = 'Gi nytt navn';
+    document.getElementById('modal-tittel').textContent = 'Rediger liste';
     document.getElementById('modal-lagre-knapp').textContent = 'Lagre';
     document.getElementById('ny-liste-navn').value = navn;
-    document.getElementById('listetype-felt').style.display = 'none';
+    // Vis type-velger og pre-velg nåværende type
+    document.getElementById('listetype-felt').style.display = 'block';
+    var liste = alleLister.find(function(l) { return l.id === id; });
+    var navarendeType = (liste && liste.type) ? liste.type : 'mat';
+    document.querySelectorAll('.listetype-boks').forEach(function(b) {
+      b.classList.toggle('valgt', b.dataset.type === navarendeType);
+    });
     document.getElementById('modal-slett-knapp').style.display = 'block';
     document.getElementById('ny-liste-modal').classList.add('synlig');
     setTimeout(function() {
@@ -1374,16 +1380,22 @@
   function lagreRedigertListe() {
     var navn = document.getElementById('ny-liste-navn').value.trim();
     if (!navn || !redigerListeId) return;
+    var valgtType = document.querySelector('.listetype-boks.valgt');
+    var nyType = valgtType ? valgtType.dataset.type : 'mat';
     alleLister = alleLister.map(function(l) {
-      if (l.id === redigerListeId) l.navn = navn;
+      if (l.id === redigerListeId) {
+        l.navn = navn;
+        l.type = nyType;
+      }
       return l;
     });
     lagreLister();
     lukkNyListeModal();
     tegnForside();
-    // Oppdater tittel hvis vi er inne i listen
+    // Oppdater tittel + ikon hvis vi er inne i listen som ble endret
     if (aktivListeId === redigerListeId) {
-      document.getElementById('aktiv-liste-tittel').textContent = '🛒 ' + navn;
+      var typeInfo = listeTypeInfo(nyType);
+      document.getElementById('aktiv-liste-tittel').textContent = typeInfo.ikon + ' ' + navn;
     }
   }
 
