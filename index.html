@@ -2759,14 +2759,33 @@
   // ==============================
   // LEGG TIL VARE
   // ==============================
-  // Kjente norske enheter for parsing av input som "2l melk", "40g rosiner"
-  var KJENTE_ENHETER = ['liter','l','dl','ml','kg','g','gram','stk','pk','pakke','pose','boks','flaske'];
+  // Kjente norske enheter for parsing av input som "2l melk", "40g rosiner".
+  // Inkluderer både korte og lange former samt vanlige variasjoner.
+  var KJENTE_ENHETER = [
+    'liter','l',
+    'desiliter','dl',
+    'milliliter','ml',
+    'kilogram','kilo','kg',
+    'gram','g',
+    'stk','stykk','stykker',
+    'pk','pakke','pakker',
+    'pose','poser',
+    'boks','bokser',
+    'flaske','flasker'
+  ];
 
   function normaliserEnhet(raw) {
     var r = (raw || '').toLowerCase();
     if (r === 'liter' || r === 'l') return 'liter';
+    if (r === 'desiliter' || r === 'dl') return 'dl';
+    if (r === 'milliliter' || r === 'ml') return 'ml';
+    if (r === 'kilogram' || r === 'kilo' || r === 'kg') return 'kg';
     if (r === 'gram' || r === 'g') return 'g';
-    if (r === 'pakke') return 'pk';
+    if (r === 'stykk' || r === 'stykker' || r === 'stk') return 'stk';
+    if (r === 'pakke' || r === 'pakker' || r === 'pk') return 'pk';
+    if (r === 'poser') return 'pose';
+    if (r === 'bokser') return 'boks';
+    if (r === 'flasker') return 'flaske';
     return r;
   }
 
@@ -2807,7 +2826,10 @@
           }
         }
       }
-      if (navn) {
+      // Hvis det som blir igjen som navn faktisk er en kjent enhet
+      // (f.eks. brukeren skrev '2kg' eller '8 stk' uten varenavn),
+      // gir vi opp parsing slik at det ikke blir lagt til en vare som heter "Kg".
+      if (navn && KJENTE_ENHETER.indexOf(navn.toLowerCase()) === -1) {
         return { navn: kapitaliser(navn), antall: antall, enhet: enhet || 'stk' };
       }
     }
