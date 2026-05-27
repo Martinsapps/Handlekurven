@@ -857,7 +857,7 @@
           oninput="foreslåBasisKategori(this.value)">
         <select class="basis-kat-velg" id="basis-kat-velg">
           <option value="kjott">🥩 Kjøtt</option>
-          <option value="fisk">🐟 Fisk</option>
+          <option value="fisk">🐟 Fisk og skalldyr</option>
           <option value="meieri">🥛 Meieri</option>
           <option value="frukt">🥦 Frukt/grønt</option>
           <option value="brod">🍞 Brød</option>
@@ -1020,7 +1020,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         <select id="velg-kategori">
           <option value="kjott">🥩 Kjøtt</option>
-          <option value="fisk">🐟 Fisk</option>
+          <option value="fisk">🐟 Fisk og skalldyr</option>
           <option value="meieri">🥛 Meieri</option>
           <option value="frukt">🥦 Frukt og grønt</option>
           <option value="brod">🍞 Brød</option>
@@ -1067,7 +1067,7 @@
 
   <div class="kategori" id="kat-fisk">
     <div class="kategori-header" onclick="toggleKategori('fisk')">
-      <p class="kategori-tittel" id="fisk-header">🐟 Fisk</p>
+      <p class="kategori-tittel" id="fisk-header">🐟 Fisk og skalldyr</p>
       <span class="kategori-pil" id="fisk-pil">▼</span>
       <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('fisk')">A–Å</button>
     </div>
@@ -2370,7 +2370,7 @@
   // ==============================
   var alleKategorier = [
     { id:'kjott',       navn:'🥩 Kjøtt' },
-    { id:'fisk',        navn:'🐟 Fisk' },
+    { id:'fisk',        navn:'🐟 Fisk og skalldyr' },
     { id:'meieri',      navn:'🥛 Meieriprodukter' },
     { id:'frukt',       navn:'🥦 Frukt og grønt' },
     { id:'brod',        navn:'🍞 Brød og bakevarer' },
@@ -2532,7 +2532,7 @@
   };
 
   var katFullnavn = {
-    kjott:'🥩 Kjøtt', fisk:'🐟 Fisk', meieri:'🥛 Meieriprodukter', frukt:'🥦 Frukt og grønt',
+    kjott:'🥩 Kjøtt', fisk:'🐟 Fisk og skalldyr', meieri:'🥛 Meieriprodukter', frukt:'🥦 Frukt og grønt',
     brod:'🍞 Brød og bakevarer', basis:'🥫 Basisvarer', husholdning:'🧹 Husholdning', diverse:'🛍️ Diverse'
   };
 
