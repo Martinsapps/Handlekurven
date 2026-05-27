@@ -2761,11 +2761,13 @@
   // ==============================
   // Kjente norske enheter for parsing av input som "2l melk", "40g rosiner".
   // Inkluderer både korte og lange former samt vanlige variasjoner.
+  // Hekto (= 100 g) er også med – konverteres til gram av byggResultat.
   var KJENTE_ENHETER = [
     'liter','l',
     'desiliter','dl',
     'milliliter','ml',
     'kilogram','kilo','kg',
+    'hektogram','hekto','hg',
     'gram','g',
     'stk','stykk','stykker',
     'pk','pakke','pakker',
@@ -2789,6 +2791,27 @@
     return r;
   }
 
+  // Bygger det endelige parse-resultatet. Sjekker at navnet ikke er en enhet
+  // (defensiv mot input som '2kg' alene), og konverterer 'hekto' til gram
+  // (1 hekto = 100 g).
+  function byggResultat(navn, antall, enhetRaw) {
+    if (!navn) return null;
+    if (KJENTE_ENHETER.indexOf(navn.toLowerCase()) !== -1) return null;
+    var r = (enhetRaw || '').toLowerCase();
+    var finalAntall = antall;
+    var enhet;
+    if (r === 'hekto' || r === 'hektogram' || r === 'hg') {
+      // 1 hekto = 100 g, ganger opp og setter enhet til gram
+      finalAntall = Math.round(antall * 100 * 10) / 10;
+      enhet = 'g';
+    } else if (r === '') {
+      enhet = 'stk';
+    } else {
+      enhet = normaliserEnhet(r);
+    }
+    return { navn: kapitaliser(navn), antall: finalAntall, enhet: enhet };
+  }
+
   function kapitaliser(s) {
     if (!s) return s;
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -2805,13 +2828,13 @@
     if (m && m[2]) {
       var antall = parseFloat(m[1].replace(',', '.'));
       var rest = m[2].trim();
-      var enhet = '';
+      var enhetRaw = '';
       var navn = rest;
       var spaceIdx = rest.indexOf(' ');
       if (spaceIdx > 0) {
         var førsteOrd = rest.substring(0, spaceIdx).toLowerCase();
         if (KJENTE_ENHETER.indexOf(førsteOrd) !== -1) {
-          enhet = normaliserEnhet(førsteOrd);
+          enhetRaw = førsteOrd;
           navn = rest.substring(spaceIdx + 1).trim();
         }
       } else {
@@ -2820,18 +2843,14 @@
           var u = KJENTE_ENHETER[i];
           var rl = rest.toLowerCase();
           if (rl.indexOf(u) === 0 && rl.length > u.length) {
-            enhet = normaliserEnhet(u);
+            enhetRaw = u;
             navn = rest.substring(u.length).trim();
             break;
           }
         }
       }
-      // Hvis det som blir igjen som navn faktisk er en kjent enhet
-      // (f.eks. brukeren skrev '2kg' eller '8 stk' uten varenavn),
-      // gir vi opp parsing slik at det ikke blir lagt til en vare som heter "Kg".
-      if (navn && KJENTE_ENHETER.indexOf(navn.toLowerCase()) === -1) {
-        return { navn: kapitaliser(navn), antall: antall, enhet: enhet || 'stk' };
-      }
+      var res = byggResultat(navn, antall, enhetRaw);
+      if (res) return res;
     }
 
     // Mønster B: <navn> <tall><enhet>  (f.eks. "Melk 2l", "Rosiner 40g")
@@ -2839,9 +2858,10 @@
     if (m2) {
       var navn2 = m2[1].trim();
       var antall2 = parseFloat(m2[2].replace(',', '.'));
-      var enhetRaw = m2[3].toLowerCase();
-      if (enhetRaw === '' || KJENTE_ENHETER.indexOf(enhetRaw) !== -1) {
-        return { navn: kapitaliser(navn2), antall: antall2, enhet: enhetRaw ? normaliserEnhet(enhetRaw) : 'stk' };
+      var enhetRaw2 = m2[3].toLowerCase();
+      if (enhetRaw2 === '' || KJENTE_ENHETER.indexOf(enhetRaw2) !== -1) {
+        var res2 = byggResultat(navn2, antall2, enhetRaw2);
+        if (res2) return res2;
       }
     }
 
