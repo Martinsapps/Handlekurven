@@ -2759,14 +2759,98 @@
   // ==============================
   // LEGG TIL VARE
   // ==============================
+  // Kjente norske enheter for parsing av input som "2l melk", "40g rosiner"
+  var KJENTE_ENHETER = ['liter','l','dl','ml','kg','g','gram','stk','pk','pakke','pose','boks','flaske'];
+
+  function normaliserEnhet(raw) {
+    var r = (raw || '').toLowerCase();
+    if (r === 'liter' || r === 'l') return 'liter';
+    if (r === 'gram' || r === 'g') return 'g';
+    if (r === 'pakke') return 'pk';
+    return r;
+  }
+
+  function kapitaliser(s) {
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  // Parser inputstrenger som "2l melk", "40g rosiner", "8stk meloner",
+  // "0,5l krem", "Melk 2l". Returnerer { navn, antall, enhet } eller null.
+  function parseMengdeFraNavn(tekst) {
+    var t = (tekst || '').trim();
+    if (!t) return null;
+
+    // Mønster A: <tall>[enhet] <navn>  (f.eks. "2l melk", "8 meloner", "40g rosiner")
+    var m = t.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+    if (m && m[2]) {
+      var antall = parseFloat(m[1].replace(',', '.'));
+      var rest = m[2].trim();
+      var enhet = '';
+      var navn = rest;
+      var spaceIdx = rest.indexOf(' ');
+      if (spaceIdx > 0) {
+        var førsteOrd = rest.substring(0, spaceIdx).toLowerCase();
+        if (KJENTE_ENHETER.indexOf(førsteOrd) !== -1) {
+          enhet = normaliserEnhet(førsteOrd);
+          navn = rest.substring(spaceIdx + 1).trim();
+        }
+      } else {
+        // Ingen mellomrom – kan være "2lmelk" (enhet rett etter tall) eller "8meloner" (ingen enhet)
+        for (var i = 0; i < KJENTE_ENHETER.length; i++) {
+          var u = KJENTE_ENHETER[i];
+          var rl = rest.toLowerCase();
+          if (rl.indexOf(u) === 0 && rl.length > u.length) {
+            enhet = normaliserEnhet(u);
+            navn = rest.substring(u.length).trim();
+            break;
+          }
+        }
+      }
+      if (navn) {
+        return { navn: kapitaliser(navn), antall: antall, enhet: enhet || 'stk' };
+      }
+    }
+
+    // Mønster B: <navn> <tall><enhet>  (f.eks. "Melk 2l", "Rosiner 40g")
+    var m2 = t.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)\s*([a-zA-ZøæåØÆÅ]*)$/);
+    if (m2) {
+      var navn2 = m2[1].trim();
+      var antall2 = parseFloat(m2[2].replace(',', '.'));
+      var enhetRaw = m2[3].toLowerCase();
+      if (enhetRaw === '' || KJENTE_ENHETER.indexOf(enhetRaw) !== -1) {
+        return { navn: kapitaliser(navn2), antall: antall2, enhet: enhetRaw ? normaliserEnhet(enhetRaw) : 'stk' };
+      }
+    }
+
+    return null;
+  }
+
   function leggTilVare() {
     var input = document.getElementById('ny-vare');
-    var navn  = input.value.trim();
-    navn = navn.charAt(0).toUpperCase() + navn.slice(1);
-    if (!navn || input.classList.contains('duplikat-felt')) return;
-    var antall   = document.getElementById('ny-antall').value.trim();
-    var enhet    = document.getElementById('ny-enhet').value;
+    var raaTekst = input.value.trim();
+    if (!raaTekst || input.classList.contains('duplikat-felt')) return;
+
+    var navn, antall, enhet;
+    // Forsøk å trekke ut mengde + enhet fra navnefeltet (f.eks. "2l melk")
+    var parsed = parseMengdeFraNavn(raaTekst);
+    if (parsed) {
+      navn = parsed.navn;
+      antall = String(parsed.antall);
+      enhet = parsed.enhet;
+    } else {
+      navn = kapitaliser(raaTekst);
+      antall = document.getElementById('ny-antall').value.trim();
+      enhet = document.getElementById('ny-enhet').value;
+    }
+
+    // Hvis parsing endret navnet, sørg for at kategorien oppdateres på det rene navnet
     var kategori = document.getElementById('velg-kategori').value;
+    if (parsed) {
+      var nyKat = finnKategori(navn);
+      if (nyKat) kategori = nyKat;
+    }
+
     document.getElementById(kategori).appendChild(lagVareElement(navn, antall, enhet));
     input.value = '';
     document.getElementById('ny-antall').value = '';
