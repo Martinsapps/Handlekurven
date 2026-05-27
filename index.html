@@ -319,6 +319,7 @@
     .sorter-knapp:hover { color: var(--text); border-color: var(--text); }
 
     #kjott-header       { background-color: #f5c2be; color: #8b2e27; }
+    #fisk-header        { background-color: #b8d8e0; color: #1a5266; }
     #meieri-header      { background-color: #bdd9f0; color: #1a5278; }
     #frukt-header       { background-color: #b8e8cc; color: #1e6b40; }
     #brod-header        { background-color: #fad9b0; color: #8a4a0e; }
@@ -855,7 +856,8 @@
         <input class="basis-input" id="ny-basis-vare" type="text" placeholder="Legg til fast vare..."
           oninput="foreslåBasisKategori(this.value)">
         <select class="basis-kat-velg" id="basis-kat-velg">
-          <option value="kjott">🥩 Kjøtt/fisk</option>
+          <option value="kjott">🥩 Kjøtt</option>
+          <option value="fisk">🐟 Fisk</option>
           <option value="meieri">🥛 Meieri</option>
           <option value="frukt">🥦 Frukt/grønt</option>
           <option value="brod">🍞 Brød</option>
@@ -1017,7 +1019,8 @@
       <div class="chip">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         <select id="velg-kategori">
-          <option value="kjott">🥩 Kjøtt og fisk</option>
+          <option value="kjott">🥩 Kjøtt</option>
+          <option value="fisk">🐟 Fisk</option>
           <option value="meieri">🥛 Meieri</option>
           <option value="frukt">🥦 Frukt og grønt</option>
           <option value="brod">🍞 Brød</option>
@@ -1054,13 +1057,23 @@
   <!-- KATEGORIER -->
   <div class="kategori" id="kat-kjott">
     <div class="kategori-header" onclick="toggleKategori('kjott')">
-      <p class="kategori-tittel" id="kjott-header">🥩 Kjøtt og fisk</p>
+      <p class="kategori-tittel" id="kjott-header">🥩 Kjøtt</p>
       <span class="kategori-pil" id="kjott-pil">▼</span>
       <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('kjott')">A–Å</button>
     </div>
     <ul id="kjott"></ul>
   </div>
   <hr class="skillelinje" id="skille-kjott">
+
+  <div class="kategori" id="kat-fisk">
+    <div class="kategori-header" onclick="toggleKategori('fisk')">
+      <p class="kategori-tittel" id="fisk-header">🐟 Fisk</p>
+      <span class="kategori-pil" id="fisk-pil">▼</span>
+      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('fisk')">A–Å</button>
+    </div>
+    <ul id="fisk"></ul>
+  </div>
+  <hr class="skillelinje" id="skille-fisk">
 
   <div class="kategori" id="kat-meieri">
     <div class="kategori-header" onclick="toggleKategori('meieri')">
@@ -1250,7 +1263,7 @@
       if (data) {
         try {
           var parsed = JSON.parse(data);
-          var kats = ['kjott','meieri','frukt','brod','basis','husholdning','diverse'];
+          var kats = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
           kats.forEach(function(k) {
             if (parsed[k]) {
               antallVarer += parsed[k].length;
@@ -1425,7 +1438,7 @@
       byggListeFraData(JSON.parse(lagretVarer));
     } else {
       // Tom liste – tøm varer i alle kategorier (men behold DOM-strukturen for egne kategorier)
-      ['kjott','meieri','frukt','brod','basis','husholdning','diverse'].forEach(function(k) {
+      ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'].forEach(function(k) {
         var ul = document.getElementById(k);
         if (ul) ul.innerHTML = '';
       });
@@ -1455,6 +1468,7 @@
       // Vi må fortsatt oppdatere UI for å reflektere tømming fra annen enhet.
       var data = snap.val() || {};
       if (offlineKø.filter(function(e) { return e.type === 'handleliste'; }).length === 0) {
+        migrerVarerData(data);
         byggListeFraData(data);
         localStorage.setItem('matplan-varer-' + id, JSON.stringify(data));
       }
@@ -1465,6 +1479,7 @@
       var data = snap.val();
       if (offlineKø.filter(function(e) { return e.type === 'basisliste'; }).length === 0) {
         basisVarer = data || [];
+        migrerBasisData(basisVarer);
         localStorage.setItem('matplan-basis-' + id, JSON.stringify(basisVarer));
         // Re-render alltid – DOM-en eksisterer i sidebaren uansett om den er åpen eller ikke,
         // så det er trygt og enkelt å holde den oppdatert kontinuerlig.
@@ -1623,7 +1638,7 @@
   function oppdaterKategoriVelgere() {
     var selects = document.querySelectorAll('#velg-kategori, #basis-kat-velg');
     selects.forEach(function(sel) {
-      var faste = ['kjott','meieri','frukt','brod','basis','husholdning','diverse'];
+      var faste = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
       while (sel.options.length > faste.length) sel.remove(sel.options.length - 1);
       egneKategorier.forEach(function(k) {
         var opt = document.createElement('option');
@@ -1814,16 +1829,25 @@
   // AUTOFULLFØR ORDLISTE
   // ==============================
   var ordliste = [
-    // Kjøtt og fisk
+    // Kjøtt
     {navn:'Kyllingfilet',kat:'kjott'},{navn:'Kyllinglår',kat:'kjott'},{navn:'Kyllingbryst',kat:'kjott'},
-    {navn:'Kjøttdeig',kat:'kjott'},{navn:'Laks',kat:'kjott'},{navn:'Laksefilet',kat:'kjott'},
-    {navn:'Torsk',kat:'kjott'},{navn:'Sei',kat:'kjott'},{navn:'Reker',kat:'kjott'},
-    {navn:'Biff',kat:'kjott'},{navn:'Svinekjøtt',kat:'kjott'},{navn:'Pølser',kat:'kjott'},
-    {navn:'Bacon',kat:'kjott'},{navn:'Skinke',kat:'kjott'},{navn:'Ribbe',kat:'kjott'},
-    {navn:'Lammekjøtt',kat:'kjott'},{navn:'Ørret',kat:'kjott'},{navn:'Makrell',kat:'kjott'},
-    {navn:'Sild',kat:'kjott'},{navn:'Karbonader',kat:'kjott'},{navn:'Kjøttkaker',kat:'kjott'},
-    {navn:'Medisterkaker',kat:'kjott'},{navn:'Koteletter',kat:'kjott'},{navn:'Svinefilet',kat:'kjott'},
-    {navn:'Entrecôte',kat:'kjott'},{navn:'Scampi',kat:'kjott'},{navn:'Tunfisk',kat:'kjott'},
+    {navn:'Kjøttdeig',kat:'kjott'},{navn:'Biff',kat:'kjott'},{navn:'Svinekjøtt',kat:'kjott'},
+    {navn:'Pølser',kat:'kjott'},{navn:'Bacon',kat:'kjott'},{navn:'Skinke',kat:'kjott'},
+    {navn:'Ribbe',kat:'kjott'},{navn:'Lammekjøtt',kat:'kjott'},{navn:'Karbonader',kat:'kjott'},
+    {navn:'Kjøttkaker',kat:'kjott'},{navn:'Medisterkaker',kat:'kjott'},{navn:'Koteletter',kat:'kjott'},
+    {navn:'Svinefilet',kat:'kjott'},{navn:'Entrecôte',kat:'kjott'},{navn:'Indrefilet',kat:'kjott'},
+    {navn:'Leverpostei',kat:'kjott'},{navn:'Salami',kat:'kjott'},{navn:'Spekeskinke',kat:'kjott'},
+    // Fisk og skalldyr
+    {navn:'Laks',kat:'fisk'},{navn:'Laksefilet',kat:'fisk'},{navn:'Torsk',kat:'fisk'},
+    {navn:'Sei',kat:'fisk'},{navn:'Reker',kat:'fisk'},{navn:'Ørret',kat:'fisk'},
+    {navn:'Makrell',kat:'fisk'},{navn:'Sild',kat:'fisk'},{navn:'Scampi',kat:'fisk'},
+    {navn:'Tunfisk',kat:'fisk'},{navn:'Fiskekaker',kat:'fisk'},{navn:'Fiskeboller',kat:'fisk'},
+    {navn:'Fiskepudding',kat:'fisk'},{navn:'Fiskefilet',kat:'fisk'},{navn:'Fiskepinner',kat:'fisk'},
+    {navn:'Hyse',kat:'fisk'},{navn:'Kveite',kat:'fisk'},{navn:'Steinbit',kat:'fisk'},
+    {navn:'Rødspette',kat:'fisk'},{navn:'Brosme',kat:'fisk'},{navn:'Akkar',kat:'fisk'},
+    {navn:'Blekksprut',kat:'fisk'},{navn:'Krabbe',kat:'fisk'},{navn:'Hummer',kat:'fisk'},
+    {navn:'Blåskjell',kat:'fisk'},{navn:'Ansjos',kat:'fisk'},
+    {navn:'Røkelaks',kat:'fisk'},{navn:'Gravlaks',kat:'fisk'},{navn:'Klippfisk',kat:'fisk'},
     // Meieri
     {navn:'Melk',kat:'meieri'},{navn:'Lettmelk',kat:'meieri'},{navn:'Helmelk',kat:'meieri'},
     {navn:'Smør',kat:'meieri'},{navn:'Egg',kat:'meieri'},{navn:'Rømme',kat:'meieri'},
@@ -1886,7 +1910,7 @@
   ];
 
   var katEmoji = {
-    kjott:'🥩', meieri:'🥛', frukt:'🥦', brod:'🍞',
+    kjott:'🥩', fisk:'🐟', meieri:'🥛', frukt:'🥦', brod:'🍞',
     basis:'🥫', husholdning:'🧹', diverse:'🛍️'
   };
 
@@ -2222,7 +2246,7 @@
   // ==============================
   // SKJUL TOMME KATEGORIER
   // ==============================
-  var katIder = ['kjott','meieri','frukt','brod','basis','husholdning','diverse'];
+  var katIder = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
 
   function oppdaterKategoriSynlighet() {
     for (var k = 0; k < katIder.length; k++) {
@@ -2345,7 +2369,8 @@
   // FLYTT TIL ANNEN KATEGORI
   // ==============================
   var alleKategorier = [
-    { id:'kjott',       navn:'🥩 Kjøtt og fisk' },
+    { id:'kjott',       navn:'🥩 Kjøtt' },
+    { id:'fisk',        navn:'🐟 Fisk' },
     { id:'meieri',      navn:'🥛 Meieriprodukter' },
     { id:'frukt',       navn:'🥦 Frukt og grønt' },
     { id:'brod',        navn:'🍞 Brød og bakevarer' },
@@ -2497,7 +2522,8 @@
   // KATEGORI-GJENKJENNING
   // ==============================
   var kategoriOrdliste = {
-    kjott:       ['kylling','laks','torsk','sei','reke','scampi','biff','svin','kjøtt','kjøttdeig','pølse','bacon','skinke','ribbe','koteletter','lever','oksekjøtt','lammekjøtt','ørret','makrell','sild','fisk','filet','karbonader','medisterkaker','kjøttkaker'],
+    fisk:        ['laks','torsk','sei','reke','scampi','ørret','makrell','sild','tunfisk','fisk','hyse','kveite','steinbit','rødspette','brosme','akkar','blekksprut','krabbe','hummer','blåskjell','ansjos','klippfisk','røkelaks','gravlaks'],
+    kjott:       ['kylling','biff','svin','kjøtt','kjøttdeig','pølse','bacon','skinke','ribbe','koteletter','lever','oksekjøtt','lammekjøtt','karbonader','medisterkaker','kjøttkaker','indrefilet','leverpostei','salami','spekeskinke','entrecôte'],
     meieri:      ['melk','smør','egg','rømme','fløte','yoghurt','ost','kvark','kesam','skyr','kremfløte','brunost','hvitost','jarlsberg','norvegia','gouda','brie','camembert','margarin'],
     frukt:       ['eple','banan','appelsin','sitron','lime','drue','jordbær','blåbær','bringebær','mango','ananas','melon','pære','plomme','kirsebær','avokado','tomat','agurk','brokkoli','blomkål','gulrot','paprika','løk','hvitløk','purre','spinat','salat','kål','mais','erter','bønner','sopp','squash','selleri','persille','basilikum','koriander','ingefær','chili','potet','søtpotet','reddik','nektarin','fersken'],
     brod:        ['brød','grovbrød','loff','baguette','ciabatta','rundstykke','bagel','knekkebrød','kneipp','pita','tortilla','lefse','wienerbrød','croissant','muffins','horn','polarbrød'],
@@ -2506,7 +2532,7 @@
   };
 
   var katFullnavn = {
-    kjott:'🥩 Kjøtt og fisk', meieri:'🥛 Meieriprodukter', frukt:'🥦 Frukt og grønt',
+    kjott:'🥩 Kjøtt', fisk:'🐟 Fisk', meieri:'🥛 Meieriprodukter', frukt:'🥦 Frukt og grønt',
     brod:'🍞 Brød og bakevarer', basis:'🥫 Basisvarer', husholdning:'🧹 Husholdning', diverse:'🛍️ Diverse'
   };
 
@@ -2517,6 +2543,75 @@
       for (var i = 0; i < ord.length; i++) { if (l.indexOf(ord[i]) !== -1) return kat; }
     }
     return null;
+  }
+
+  // ==============================
+  // FISK/KJØTT-MIGRASJON
+  // Gamle data har fisk-varer lagret i 'kjott'-kategorien. Disse må flyttes til
+  // den nye 'fisk'-kategorien. Funksjonene under brukes både ved oppstart (på
+  // alle localStorage-nøkler) og i Firebase-listenere (på data fra sky).
+  // ==============================
+  function erFiskeNavn(navn) {
+    var l = (navn || '').toLowerCase();
+    var fiskOrd = kategoriOrdliste.fisk;
+    for (var i = 0; i < fiskOrd.length; i++) {
+      if (l.indexOf(fiskOrd[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function migrerVarerData(data) {
+    // data har form { kjott: [...], fisk: [...], meieri: [...], ... }
+    if (!data || !data.kjott || !Array.isArray(data.kjott)) return data;
+    var beholdes = [];
+    var flyttes = Array.isArray(data.fisk) ? data.fisk.slice() : [];
+    var endret = false;
+    data.kjott.forEach(function(vare) {
+      if (vare && erFiskeNavn(vare.navn)) { flyttes.push(vare); endret = true; }
+      else beholdes.push(vare);
+    });
+    if (endret) {
+      data.kjott = beholdes;
+      data.fisk  = flyttes;
+    }
+    return data;
+  }
+
+  function migrerBasisData(arr) {
+    // arr har form [{ navn, kategori, ... }, ...]
+    if (!Array.isArray(arr)) return arr;
+    arr.forEach(function(item) {
+      if (item && item.kategori === 'kjott' && erFiskeNavn(item.navn)) {
+        item.kategori = 'fisk';
+      }
+    });
+    return arr;
+  }
+
+  function migrerFiskFraKjott() {
+    // Engangs-migrering ved oppstart for alle lagrede lister i localStorage.
+    if (localStorage.getItem('matplan-fisk-migrert') === '1') return;
+    var nokler = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && (k.indexOf('matplan-varer-') === 0 || k.indexOf('matplan-basis-') === 0)) {
+        nokler.push(k);
+      }
+    }
+    nokler.forEach(function(nokkel) {
+      try {
+        var raa = localStorage.getItem(nokkel);
+        if (!raa) return;
+        var data = JSON.parse(raa);
+        if (nokkel.indexOf('matplan-varer-') === 0) {
+          migrerVarerData(data);
+        } else {
+          migrerBasisData(data);
+        }
+        localStorage.setItem(nokkel, JSON.stringify(data));
+      } catch (e) { /* hopper over ugyldig data */ }
+    });
+    localStorage.setItem('matplan-fisk-migrert', '1');
   }
 
   function foreslåKategori(navn) {
@@ -2659,7 +2754,7 @@
     { navn:'Hermetiske tomater', kategori:'basis' }, { navn:'Toalettpapir', kategori:'husholdning' }
   ];
 
-  var katNavn = { kjott:'🥩', meieri:'🥛', frukt:'🥦', brod:'🍞', basis:'🥫', husholdning:'🧹', diverse:'🛍️' };
+  var katNavn = { kjott:'🥩', fisk:'🐟', meieri:'🥛', frukt:'🥦', brod:'🍞', basis:'🥫', husholdning:'🧹', diverse:'🛍️' };
 
   function tegnBasisListe() {
     var container = document.getElementById('basis-varer-liste');
@@ -2816,7 +2911,7 @@
   }
 
   function hentData() {
-    var kategorier = ['kjott','meieri','frukt','brod','basis','husholdning','diverse'].concat(egneKategorier.map(function(k){return k.id;}));
+    var kategorier = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'].concat(egneKategorier.map(function(k){return k.id;}));
     var data = {};
     kategorier.forEach(function(id) {
       var liste = document.getElementById(id);
@@ -2838,7 +2933,7 @@
   }
 
   function byggListeFraData(data) {
-    var kategorier = ['kjott','meieri','frukt','brod','basis','husholdning','diverse'].concat(egneKategorier.map(function(k){return k.id;}));
+    var kategorier = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'].concat(egneKategorier.map(function(k){return k.id;}));
     kategorier.forEach(function(id) {
       var liste = document.getElementById(id);
       if (!liste) return;
@@ -3005,6 +3100,7 @@
   // ==============================
   // OPPSTART
   // ==============================
+  migrerFiskFraKjott();
   lastInnOfflineKø();
   lastInnHistorikk();
   lastInnEgneKategorier();
