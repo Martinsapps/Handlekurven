@@ -892,11 +892,11 @@
       }
     });
 
-    if (treff.length === 0 && verdi.trim().length > 0) {
-      // Ingen treff – vis "Legg til som ny vare"
-      liste.innerHTML = '<div class="autofullfør-valg" onclick="lukkAutofullfør()">' +
-        '<span class="ny-vare-hint">↵ Legg til «' + verdi.trim() + '» som ny vare</span></div>';
-      liste.classList.add('synlig');
+    if (treff.length === 0) {
+      // Ingen treff – skjul dropdownen helt så den ikke dekker kategori/mengde/enhet-feltene.
+      // Brukeren legger til varen ved å trykke Enter eller '+ Legg til'-knappen som vanlig.
+      liste.classList.remove('synlig');
+      liste.innerHTML = '';
       return;
     }
 
