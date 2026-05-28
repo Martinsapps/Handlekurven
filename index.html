@@ -8,7 +8,6 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -55,7 +54,6 @@
     <button class="sidebar-fane aktiv" id="fane-basis-knapp" onclick="byttFane('basis')">⭐ Basis</button>
     <button class="sidebar-fane" id="fane-kategorier-knapp" onclick="byttFane('kategorier')">🗂 Kat.</button>
     <button class="sidebar-fane" id="fane-skriv-knapp" onclick="byttFane('skriv')">🖨 Skriv</button>
-    <button class="sidebar-fane" id="fane-varsel-knapp" onclick="byttFane('varsel')">🔔 Varsle</button>
   </div>
 
   <div class="sidebar-innhold aktiv" id="fane-basis">
@@ -109,20 +107,7 @@
     <button class="skriv-ut-knapp" onclick="skrivUtHandleliste()" style="margin-top:0;">🖨 Skriv ut handleliste</button>
   </div>
 
-  <div class="sidebar-innhold" id="fane-varsel">
-    <div id="varsel-innhold">
-      <p class="varsel-status" id="varsel-status-tekst">Laster varslingsstatus...</p>
-      <button class="varsel-tillatelse-knapp" id="varsel-tillatelse-knapp" onclick="aktiverVarsler()" style="display:none;">
-        🔔 Aktiver push-varsler
-      </button>
-      <button class="varsel-knapp" id="varsel-send-knapp" onclick="sendVarsel()" style="display:none;" disabled>
-        📣 Send varsel til samboer
-      </button>
-      <div class="varsel-suksess" id="varsel-suksess">
-        ✓ Varsel sendt!
-      </div>
-    </div>
-  </div>
+
 </div>
 
 <!-- FORSIDE -->

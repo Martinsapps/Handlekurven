@@ -8,13 +8,12 @@
   // SIDEBAR FANER
   // ==============================
   function byttFane(fane) {
-    ['basis','kategorier','skriv','varsel'].forEach(function(f) {
+    ['basis','kategorier','skriv'].forEach(function(f) {
       document.getElementById('fane-' + f).classList.toggle('aktiv', f === fane);
       document.getElementById('fane-' + f + '-knapp').classList.toggle('aktiv', f === fane);
     });
     if (fane === 'basis') { tegnBasisListe(); tegnForslagListe(); }
     if (fane === 'kategorier') tegnEgneKategorierSidebar();
-    if (fane === 'varsel') sjekkVarselStatus();
   }
 
   // ==============================
@@ -981,127 +980,8 @@
   document.addEventListener('click', function(e) {
     if (!e.target.closest('.autofullfør-wrapper')) lukkAutofullfør();
   });
-  // ==============================
-  // PUSH-VARSLER (FCM)
-  // ==============================
-  var VAPID_KEY = 'BKpA6NtX1My8eBo5QnvXdO8cV9P74zxf_5sqfrhEwY9RFMKfY-RjcCzXH12h0BJnK2tvAJDxEe2mVYAH6ENjWwI';
-  var messaging = null;
-
-  function initMessaging() {
-    try {
-      if (firebase.messaging && firebase.messaging.isSupported()) {
-        messaging = firebase.messaging();
-        messaging.onMessage(function(payload) {
-          // Varsel mottatt mens appen er åpen
-          var tittel = payload.notification ? payload.notification.title : 'Handleliste';
-          var body   = payload.notification ? payload.notification.body  : 'Listen er oppdatert!';
-          visToast(tittel + ': ' + body);
-        });
-      }
-    } catch(e) { console.log('FCM ikke tilgjengelig:', e); }
-  }
-
-  function sjekkVarselStatus() {
-    var statusEl   = document.getElementById('varsel-status-tekst');
-    var tillatelseKnapp = document.getElementById('varsel-tillatelse-knapp');
-    var sendKnapp  = document.getElementById('varsel-send-knapp');
-    var suksess    = document.getElementById('varsel-suksess');
-    suksess.classList.remove('synlig');
-
-    if (!('Notification' in window) || !messaging) {
-      statusEl.textContent = '⚠️ Push-varsler støttes ikke i denne nettleseren. Prøv å åpne siden i Safari.';
-      return;
-    }
-
-    var tillatelse = Notification.permission;
-    if (tillatelse === 'granted') {
-      statusEl.textContent = '🔔 Push-varsler er aktivert. Trykk for å varsle samboeren om at listen er klar.';
-      tillatelseKnapp.style.display = 'none';
-      sendKnapp.style.display = 'block';
-      sendKnapp.disabled = false;
-      hentOgLagreToken();
-    } else if (tillatelse === 'denied') {
-      statusEl.textContent = '🚫 Du har blokkert varsler. Gå til innstillinger i nettleseren og tillat varsler for denne siden.';
-      tillatelseKnapp.style.display = 'none';
-      sendKnapp.style.display = 'none';
-    } else {
-      statusEl.textContent = '👇 Aktiver push-varsler for å kunne varsle samboeren din.';
-      tillatelseKnapp.style.display = 'block';
-      sendKnapp.style.display = 'none';
-    }
-  }
-
-  function aktiverVarsler() {
-    if (!messaging) { sjekkVarselStatus(); return; }
-    Notification.requestPermission().then(function(tillatelse) {
-      if (tillatelse === 'granted') {
-        hentOgLagreToken();
-        sjekkVarselStatus();
-      } else {
-        sjekkVarselStatus();
-      }
-    });
-  }
-
-  function hentOgLagreToken() {
-    if (!messaging) return;
-    if (!('serviceWorker' in navigator)) {
-      loggFeil('FCM: serviceWorker ikke støttet', 'fcm', '');
-      return;
-    }
-    // Registrer firebase-messaging-sw.js eksplisitt med relativ path så GitHub Pages-prosjektsiden
-    // ikke prøver å laste fra rot. Send registreringen til getToken slik at Firebase ikke
-    // forsøker auto-registrering på feil URL.
-    navigator.serviceWorker.register('./firebase-messaging-sw.js').then(function(reg) {
-      return messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-    }).then(function(token) {
-      if (token && database) {
-        // Lagre token under en fast nøkkel per enhet (bruker tidsstempel som nøkkel første gang)
-        var tokenNøkkel = localStorage.getItem('matplan-token-nøkkel');
-        if (!tokenNøkkel) {
-          tokenNøkkel = 'enhet-' + Date.now();
-          localStorage.setItem('matplan-token-nøkkel', tokenNøkkel);
-        }
-        database.ref('fcm-tokens/' + tokenNøkkel).set(token);
-      }
-    }).catch(function(err) {
-      loggFeil('FCM token-feil: ' + err.message, 'fcm', '');
-    });
-  }
-
-  function sendVarsel() {
-    if (!database) return;
-    var sendKnapp = document.getElementById('varsel-send-knapp');
-    var suksess   = document.getElementById('varsel-suksess');
-    sendKnapp.disabled = true;
-    sendKnapp.textContent = 'Sender...';
-
-    // Skriv en varsel-trigger til Firebase – service worker på andre enhet plukker den opp
-    database.ref('varsler').push({
-      melding: 'Handlelisten er oppdatert og klar! 🛒',
-      tid: Date.now(),
-      fra: localStorage.getItem('matplan-token-nøkkel') || 'ukjent'
-    }).then(function() {
-      suksess.classList.add('synlig');
-      sendKnapp.textContent = '📣 Send varsel til samboer';
-      sendKnapp.disabled = false;
-      setTimeout(function() { suksess.classList.remove('synlig'); }, 4000);
-    }).catch(function(err) {
-      loggFeil('Varsel-feil: ' + err.message, 'varsel', '');
-      sendKnapp.textContent = '📣 Send varsel til samboer';
-      sendKnapp.disabled = false;
-    });
-  }
-
-  function visToast(melding) {
-    var toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
-      'background:var(--text);color:var(--surface);padding:12px 20px;border-radius:20px;' +
-      'font-size:13px;z-index:9999;max-width:300px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
-    toast.textContent = melding;
-    document.body.appendChild(toast);
-    setTimeout(function() { toast.parentNode && toast.parentNode.removeChild(toast); }, 4000);
-  }
+  // Push-varsler er midlertidig fjernet – kommer inn igjen sammen med
+  // Firebase Authentication når brukerkontoer er på plass.
 
   // ==============================
   // FEILLOGG
@@ -2190,7 +2070,6 @@
   oppdaterTeller();
   oppdaterKategoriSynlighet();
   initFirebase();
-  initMessaging();
 
 // ============================================================
 // Service worker-registrering
