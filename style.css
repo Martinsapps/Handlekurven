@@ -292,6 +292,13 @@
     }
     .kategori-pil { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
     .kategori-pil.lukket { transform: rotate(-90deg); }
+    .kategori-antall {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      background: var(--bg); padding: 2px 9px; border-radius: 20px;
+      min-width: 22px; text-align: center;
+    }
+    .kategori-antall.tom { display: none; }
+    .kategori-antall.ferdig { color: var(--green-dk); background: var(--green-lt); }
     .sorter-knapp {
       margin-left: auto; background: none; border: 1px solid var(--border);
       border-radius: 20px; font-size: 11px; color: var(--muted); padding: 3px 10px; cursor: pointer;
