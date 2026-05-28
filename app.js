@@ -865,6 +865,67 @@
     {navn:'Tørketrommel-ark',kat:'husholdning'},{navn:'Flekkfjerner',kat:'husholdning'},
     {navn:'Hundemat',kat:'husholdning'},{navn:'Kattemat',kat:'husholdning'},
     {navn:'Kattesand',kat:'husholdning'},{navn:'Lyspærer',kat:'husholdning'},
+    // ============================================================
+    // Hus og hjem - vises kun for liste-type 'hus'
+    // ============================================================
+    {navn:'Stearinlys',kat:'husholdning',for:['hus']},{navn:'Telys',kat:'husholdning',for:['hus']},
+    {navn:'Fyrstikker',kat:'husholdning',for:['hus']},{navn:'Vase',kat:'diverse',for:['hus']},
+    {navn:'Blomsterjord',kat:'diverse',for:['hus']},{navn:'Avskårne blomster',kat:'diverse',for:['hus']},
+    {navn:'Potteplante',kat:'diverse',for:['hus']},{navn:'Sengetøy',kat:'diverse',for:['hus']},
+    {navn:'Putetrekk',kat:'diverse',for:['hus']},{navn:'Dynetrekk',kat:'diverse',for:['hus']},
+    {navn:'Håndklær',kat:'diverse',for:['hus']},{navn:'Badehåndkle',kat:'diverse',for:['hus']},
+    {navn:'Kjøkkenhåndkle',kat:'diverse',for:['hus']},{navn:'Gryteklut',kat:'diverse',for:['hus']},
+    {navn:'Vaskeklut',kat:'husholdning',for:['hus']},{navn:'Mikrofiberklut',kat:'husholdning',for:['hus']},
+    {navn:'Klesklype',kat:'diverse',for:['hus']},{navn:'Kleshenger',kat:'diverse',for:['hus']},
+    {navn:'Skohorn',kat:'diverse',for:['hus']},{navn:'Skopuss',kat:'diverse',for:['hus']},
+    {navn:'Pyntegjenstand',kat:'diverse',for:['hus']},{navn:'Bilderamme',kat:'diverse',for:['hus']},
+    {navn:'Bildelisting',kat:'diverse',for:['hus']},{navn:'Lyspære',kat:'husholdning',for:['hus','bygg']},
+    {navn:'Sparepære',kat:'husholdning',for:['hus','bygg']},{navn:'LED-pære',kat:'husholdning',for:['hus','bygg']},
+    {navn:'Lampeskjerm',kat:'diverse',for:['hus']},{navn:'Lampehus',kat:'diverse',for:['hus','bygg']},
+    {navn:'Batterier',kat:'husholdning',for:['hus','bygg','diverse']},{navn:'AA-batterier',kat:'husholdning',for:['hus','bygg','diverse']},
+    {navn:'AAA-batterier',kat:'husholdning',for:['hus','bygg','diverse']},{navn:'Knappcellebatteri',kat:'husholdning',for:['hus','bygg']},
+    {navn:'Skjøteledning',kat:'diverse',for:['hus','bygg']},{navn:'Stikkontakt',kat:'diverse',for:['hus','bygg']},
+    {navn:'Tape',kat:'diverse',for:['hus','bygg','diverse']},{navn:'Lim',kat:'diverse',for:['hus','bygg']},
+    {navn:'Lommelykt',kat:'diverse',for:['hus','bygg']},{navn:'Lufterfrisker',kat:'husholdning',for:['hus']},
+    // ============================================================
+    // Bygg og verktøy - vises kun for liste-type 'bygg'
+    // ============================================================
+    {navn:'Skruer',kat:'diverse',for:['bygg']},{navn:'Treskruer',kat:'diverse',for:['bygg']},
+    {navn:'Gipsskruer',kat:'diverse',for:['bygg']},{navn:'Spiker',kat:'diverse',for:['bygg']},
+    {navn:'Mutre',kat:'diverse',for:['bygg']},{navn:'Bolter',kat:'diverse',for:['bygg']},
+    {navn:'Plugger',kat:'diverse',for:['bygg']},{navn:'Hammer',kat:'diverse',for:['bygg']},
+    {navn:'Skrutrekker',kat:'diverse',for:['bygg']},{navn:'Tang',kat:'diverse',for:['bygg']},
+    {navn:'Sag',kat:'diverse',for:['bygg']},{navn:'Drill',kat:'diverse',for:['bygg']},
+    {navn:'Borr-bit',kat:'diverse',for:['bygg']},{navn:'Sagblad',kat:'diverse',for:['bygg']},
+    {navn:'Maling',kat:'diverse',for:['bygg']},{navn:'Hvitmaling',kat:'diverse',for:['bygg']},
+    {navn:'Lakk',kat:'diverse',for:['bygg']},{navn:'Beis',kat:'diverse',for:['bygg']},
+    {navn:'Pensel',kat:'diverse',for:['bygg']},{navn:'Malekost',kat:'diverse',for:['bygg']},
+    {navn:'Malerull',kat:'diverse',for:['bygg']},{navn:'Malerbrett',kat:'diverse',for:['bygg']},
+    {navn:'Maskeringsteip',kat:'diverse',for:['bygg']},{navn:'Sandpapir',kat:'diverse',for:['bygg']},
+    {navn:'Sparkel',kat:'diverse',for:['bygg']},{navn:'Sparkelmasse',kat:'diverse',for:['bygg']},
+    {navn:'Silikon',kat:'diverse',for:['bygg']},{navn:'Fugemasse',kat:'diverse',for:['bygg']},
+    {navn:'Måleband',kat:'diverse',for:['bygg']},{navn:'Tommestokk',kat:'diverse',for:['bygg']},
+    {navn:'Vater',kat:'diverse',for:['bygg']},{navn:'Vernebriller',kat:'diverse',for:['bygg']},
+    {navn:'Arbeidshansker',kat:'diverse',for:['bygg']},{navn:'Hørselvern',kat:'diverse',for:['bygg']},
+    {navn:'Presenning',kat:'diverse',for:['bygg']},{navn:'Sement',kat:'diverse',for:['bygg']},
+    {navn:'Mørtel',kat:'diverse',for:['bygg']},{navn:'Sand',kat:'diverse',for:['bygg']},
+    {navn:'Planker',kat:'diverse',for:['bygg']},{navn:'Lister',kat:'diverse',for:['bygg']},
+    {navn:'Isolasjon',kat:'diverse',for:['bygg']},{navn:'Strips',kat:'diverse',for:['bygg','diverse']},
+    // ============================================================
+    // Diverse - vises kun for liste-type 'diverse'
+    // ============================================================
+    {navn:'Gavepapir',kat:'diverse',for:['diverse']},{navn:'Gavebånd',kat:'diverse',for:['diverse']},
+    {navn:'Gavekort',kat:'diverse',for:['diverse']},{navn:'Bursdagskort',kat:'diverse',for:['diverse']},
+    {navn:'Konvolutt',kat:'diverse',for:['diverse']},{navn:'Frimerker',kat:'diverse',for:['diverse']},
+    {navn:'Notatbok',kat:'diverse',for:['diverse']},{navn:'Kulepenn',kat:'diverse',for:['diverse']},
+    {navn:'Blyant',kat:'diverse',for:['diverse']},{navn:'Viskelær',kat:'diverse',for:['diverse']},
+    {navn:'Mappe',kat:'diverse',for:['diverse']},{navn:'Plastlomme',kat:'diverse',for:['diverse']},
+    {navn:'Engangskopper',kat:'husholdning',for:['diverse']},{navn:'Engangstallerken',kat:'husholdning',for:['diverse']},
+    {navn:'Plastbestikk',kat:'husholdning',for:['diverse']},{navn:'Servietter',kat:'husholdning',for:['diverse']},
+    {navn:'Plastpose',kat:'husholdning',for:['diverse']},{navn:'Tau',kat:'diverse',for:['diverse']},
+    {navn:'Snøre',kat:'diverse',for:['diverse']},{navn:'Plaster',kat:'diverse',for:['diverse']},
+    {navn:'Bandasje',kat:'diverse',for:['diverse']},{navn:'Solbriller',kat:'diverse',for:['diverse']},
+    {navn:'Paraply',kat:'diverse',for:['diverse']},{navn:'Reisekoffert',kat:'diverse',for:['diverse']},
   ];
 
   var katEmoji = {
@@ -898,8 +959,19 @@
 
     var søk = verdi.toLowerCase();
 
-    // Søk i ordlisten
+    // Finn gjeldende listetype (mat/arrangement/hus/bygg/diverse).
+    // Hver ordliste-entry har en 'for'-tag som sier hvilke listetyper den passer i.
+    // Mangler 'for' → defaulter til mat+arrangement (matvarer).
+    var gjeldendeType = 'mat';
+    if (aktivListeId) {
+      var aktivListe = alleLister.find(function(l) { return l.id === aktivListeId; });
+      if (aktivListe && aktivListe.type) gjeldendeType = aktivListe.type;
+    }
+
+    // Søk i ordlisten – kun varer som passer gjeldende listetype
     var treff = ordliste.filter(function(o) {
+      var gyldigFor = o['for'] || ['mat','arrangement'];
+      if (gyldigFor.indexOf(gjeldendeType) === -1) return false;
       return o.navn.toLowerCase().indexOf(søk) === 0;
     });
 
