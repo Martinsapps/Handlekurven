@@ -512,6 +512,35 @@
 
   function lagreEgneKategorier() {
     localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
+    if (typeof database !== 'undefined' && database && erKoblet) {
+      database.ref('egne-kategorier').set(egneKategorier).catch(function(err) {
+        loggFeil('Lagre egne kategorier: ' + err.message, 'firebase', '');
+      });
+    }
+  }
+
+  // Flagg som hindrer sync-loop: når listener mottar data fra sky, ikke skriv tilbake.
+  var ignorerEgneKategorierEko = false;
+
+  // Bygger DOM fra et helt nytt egneKategorier-array. Brukes når sky-data ankommer
+  // og lokalt har avvik. Rydder eksisterende DOM først, så bygger opp på nytt.
+  function rebuildEgneKategorierFraData(nyeKategorier) {
+    // Fjern alle eksisterende egen-kategori-DOM-elementer
+    egneKategorier.slice().forEach(function(k) {
+      var katDiv = document.getElementById('kat-' + k.id);
+      var skille = document.getElementById('skille-' + k.id);
+      if (katDiv) katDiv.parentNode.removeChild(katDiv);
+      if (skille) skille.parentNode.removeChild(skille);
+      katIder = katIder.filter(function(x) { return x !== k.id; });
+      alleKategorier = alleKategorier.filter(function(x) { return x.id !== k.id; });
+    });
+    egneKategorier = nyeKategorier || [];
+    egneKategorier.forEach(function(k) {
+      byggEgenKategoriDOM(k.id, k.navn, k.farge);
+    });
+    oppdaterKategoriVelgere();
+    tegnEgneKategorierSidebar();
+    localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
   }
 
   function lastInnEgneKategorier() {
@@ -2051,6 +2080,29 @@
           tegnForside();
         }
       });
+
+      // Lytt på egne kategorier (synker mellom enheter)
+      database.ref('egne-kategorier').on('value', function(snap) {
+        if (ignorerEgneKategorierEko) { ignorerEgneKategorierEko = false; return; }
+        var data = snap.val();
+        // Firebase kan returnere array eller objekt - normaliser
+        var nye = [];
+        if (Array.isArray(data)) nye = data;
+        else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
+        // Sjekk om noe faktisk endret seg før vi rebuilder DOM
+        if (JSON.stringify(egneKategorier) !== JSON.stringify(nye)) {
+          rebuildEgneKategorierFraData(nye);
+        }
+      });
+
+      // Hvis vi har lokale egne kategorier som ikke er i sky enda, last dem opp
+      if (egneKategorier.length > 0) {
+        database.ref('egne-kategorier').once('value', function(snap) {
+          if (!snap.val()) {
+            database.ref('egne-kategorier').set(egneKategorier);
+          }
+        });
+      }
 
     } catch(err) { loggFeil('Firebase init-feil: ' + err.message, 'firebase', ''); visKoblingStatus(false); }
   }
