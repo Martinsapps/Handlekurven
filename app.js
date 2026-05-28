@@ -1851,6 +1851,17 @@
 
   var katNavn = { kjott:'🥩', fisk:'🐟', meieri:'🥛', frukt:'🥦', brod:'🍞', basis:'🥫', husholdning:'🧹', diverse:'🛍️' };
 
+  // Bygger HTML for enhets-options for basis-rediger-panel (samme enheter som hovedlisten)
+  function basisEnhetOptions(valgt) {
+    var enh = ['','stk','pk','kg','g','liter','dl','ml','pose','boks','flaske'];
+    var html = '';
+    for (var i = 0; i < enh.length; i++) {
+      var label = enh[i] === '' ? '–' : enh[i];
+      html += '<option value="' + enh[i] + '"' + (enh[i] === (valgt || '') ? ' selected' : '') + '>' + label + '</option>';
+    }
+    return html;
+  }
+
   function tegnBasisListe() {
     var container = document.getElementById('basis-varer-liste');
     container.innerHTML = '';
@@ -1861,36 +1872,65 @@
       // Vis emoji for predefinerte kategorier, navnet for egne kategorier
       var katEgen = egneKategorier.find(function(k) { return k.id === vare.kategori; });
       var katVis = katNavn[vare.kategori] || (katEgen ? katEgen.navn : '');
+      // Mengde-badge hvis satt
+      var mengdeTekst = vare.antall ? (vare.antall + ' ' + (vare.enhet || 'stk')) : '';
       div.innerHTML =
         '<span class="basis-sjekk" onclick="toggleBasis(this)"></span>' +
         '<span class="basis-vare-navn">' + vare.navn + '</span>' +
+        (mengdeTekst ? '<span class="basis-mengde-badge">' + mengdeTekst + '</span>' : '') +
         '<span class="basis-kat">' + katVis + '</span>' +
-        '<button class="basis-notat-knapp" onclick="toggleBasisMerknad(this)" title="Legg til merknad">📝</button>' +
+        '<button class="basis-notat-knapp" onclick="toggleBasisRediger(this)" title="Rediger mengde og merknad">✏️</button>' +
         '<button class="basis-slett" onclick="fjernFraBasis(' + i + ')">×</button>' +
         (vare.merknad ? '<span class="basis-merknad-tekst">' + vare.merknad + '</span>' : '') +
-        '<input type="text" class="basis-merknad-input" placeholder="Merknad, f.eks. 2 liter lettmelk..." value="' + (vare.merknad || '') + '" onchange="lagreBasisMerknad(this,' + i + ')">';
+        '<div class="basis-rediger-panel">' +
+          '<div class="basis-rediger-rad">' +
+            '<label>Mengde:</label>' +
+            '<input type="number" class="bp-antall" min="0.1" step="0.1" placeholder="Ant." value="' + (vare.antall || '') + '">' +
+            '<select class="bp-enhet">' + basisEnhetOptions(vare.enhet) + '</select>' +
+          '</div>' +
+          '<div class="basis-rediger-rad">' +
+            '<label>Merknad:</label>' +
+            '<input type="text" class="bp-merknad" placeholder="f.eks. lettmelk..." value="' + (vare.merknad || '') + '">' +
+          '</div>' +
+          '<button class="basis-rediger-lagre" onclick="lagreBasisRediger(this,' + i + ')">Lagre</button>' +
+        '</div>';
       container.appendChild(div);
     }
     oppdaterBasisInfo();
   }
 
-  function toggleBasisMerknad(knapp) {
-    var input = knapp.closest('.basis-vare').querySelector('.basis-merknad-input');
-    input.classList.toggle('synlig');
-    if (input.classList.contains('synlig')) input.focus();
+  function toggleBasisRediger(knapp) {
+    var panel = knapp.closest('.basis-vare').querySelector('.basis-rediger-panel');
+    // Lukk andre åpne basis-paneler først
+    document.querySelectorAll('.basis-rediger-panel.synlig').forEach(function(p) {
+      if (p !== panel) p.classList.remove('synlig');
+    });
+    panel.classList.toggle('synlig');
+    if (panel.classList.contains('synlig')) {
+      var inp = panel.querySelector('.bp-antall');
+      if (inp) inp.focus();
+    }
   }
 
+  function lagreBasisRediger(knapp, i) {
+    var panel = knapp.closest('.basis-rediger-panel');
+    var antall = panel.querySelector('.bp-antall').value.trim();
+    var enhet  = panel.querySelector('.bp-enhet').value;
+    var merknad = panel.querySelector('.bp-merknad').value.trim();
+    basisVarer[i].antall  = antall ? parseFloat(antall.replace(',', '.')) : '';
+    basisVarer[i].enhet   = enhet || '';
+    basisVarer[i].merknad = merknad;
+    lagreAlt();
+    tegnBasisListe();
+  }
+
+  // Bevart for bakoverkompatibilitet – brukes ikke lenger av ny rediger-panel,
+  // men kan fortsatt være referert hvis noe gammelt kall finnes.
   function lagreBasisMerknad(input, i) {
     var verdi = input.value.trim();
     basisVarer[i].merknad = verdi;
-    var vare = input.closest('.basis-vare');
-    var tekst = vare.querySelector('.basis-merknad-tekst');
-    if (verdi) {
-      if (!tekst) { tekst = document.createElement('span'); tekst.className = 'basis-merknad-tekst'; vare.insertBefore(tekst, input); }
-      tekst.textContent = verdi;
-    } else if (tekst) { tekst.parentNode.removeChild(tekst); }
-    input.classList.remove('synlig');
     lagreAlt();
+    tegnBasisListe();
   }
 
   function toggleBasis(boks) {
@@ -1911,14 +1951,21 @@
 
   function leggTilBasisVare() {
     var input = document.getElementById('ny-basis-vare');
-    var navn  = input.value.trim();
-    navn = navn.charAt(0).toUpperCase() + navn.slice(1);
-    if (!navn) return;
-    // Bruk det brukeren har valgt i nedtrekksmenyen. Auto-forslag (finnKategori) kjører
-    // allerede via foreslåBasisKategori og oppdaterer dropdown mens man skriver, men
-    // brukerens eksplisitte valg skal alltid vinne.
-    var kategori = document.getElementById('basis-kat-velg').value;
-    basisVarer.push({ navn: navn, kategori: kategori });
+    var raaTekst = input.value.trim();
+    if (!raaTekst) return;
+    var navn, antall = '', enhet = '', kategori;
+    // Smart parsing: '2l melk' → Melk + 2 + liter (samme som hovedlisten)
+    var parsed = parseMengdeFraNavn(raaTekst);
+    if (parsed) {
+      navn = parsed.navn;
+      antall = parsed.antall;
+      enhet = parsed.enhet;
+      kategori = finnKategori(navn) || document.getElementById('basis-kat-velg').value;
+    } else {
+      navn = raaTekst.charAt(0).toUpperCase() + raaTekst.slice(1);
+      kategori = document.getElementById('basis-kat-velg').value;
+    }
+    basisVarer.push({ navn: navn, kategori: kategori, antall: antall, enhet: enhet });
     input.value = '';
     lagreAlt();
     tegnBasisListe();
@@ -1963,12 +2010,18 @@
       document.querySelectorAll('ul li').forEach(function(li) {
         if (!eksisterendeLi && li.querySelector('.vare-tekst').textContent.trim().toLowerCase() === navn.toLowerCase()) eksisterendeLi = li;
       });
+      // Hent mengde fra selve basisvaren (lagret antall/enhet)
+      var basisAntall = basisVarer[indeks] ? basisVarer[indeks].antall : '';
+      var basisEnhet  = basisVarer[indeks] ? basisVarer[indeks].enhet  : '';
       if (eksisterendeLi) {
         var erHuket = eksisterendeLi.querySelector('.sjekk.huket') ? true : false;
-        if (basisMerknad) {
-          var nyLiM = lagVareElement(navn, '', '');
-          var notatM = document.createElement('span'); notatM.className = 'notat-tekst'; notatM.textContent = basisMerknad;
-          nyLiM.insertBefore(notatM, nyLiM.querySelector('.rediger-panel'));
+        if (basisMerknad || basisAntall) {
+          // Eksisterer allerede – legg til en ny linje med dagens mengde/merknad
+          var nyLiM = lagVareElement(navn, basisAntall || '', basisEnhet || '');
+          if (basisMerknad) {
+            var notatM = document.createElement('span'); notatM.className = 'notat-tekst'; notatM.textContent = basisMerknad;
+            nyLiM.insertBefore(notatM, nyLiM.querySelector('.rediger-panel'));
+          }
           document.getElementById(kategori).appendChild(nyLiM); overført++;
         } else if (erHuket) {
           var sjekk = eksisterendeLi.querySelector('.sjekk');
@@ -1977,18 +2030,19 @@
           eksisterendeLi.classList.remove('skjult'); reaktivert++;
         } else { finnes.push(navn); }
       } else {
-        var nyVare = lagVareElement(navn, '', '');
+        var nyVare = lagVareElement(navn, basisAntall || '', basisEnhet || '');
         if (basisMerknad) {
           var notatSpan = document.createElement('span'); notatSpan.className = 'notat-tekst'; notatSpan.textContent = basisMerknad;
           nyVare.insertBefore(notatSpan, nyVare.querySelector('.rediger-panel'));
         }
         document.getElementById(kategori).appendChild(nyVare); overført++;
       }
-      if (basisVarer[indeks]) basisVarer[indeks].merknad = '';
-      var merknadInput = vareDiv.querySelector('.basis-merknad-input');
-      var merknadTekst = vareDiv.querySelector('.basis-merknad-tekst');
-      if (merknadInput) { merknadInput.value = ''; merknadInput.classList.remove('synlig'); }
-      if (merknadTekst) merknadTekst.parentNode.removeChild(merknadTekst);
+      // Nullstill mengde + merknad i basisvaren etter overføring (per brukerens ønske)
+      if (basisVarer[indeks]) {
+        basisVarer[indeks].merknad = '';
+        basisVarer[indeks].antall = '';
+        basisVarer[indeks].enhet = '';
+      }
       boks.classList.remove('valgt'); boks.textContent = '';
     });
     var melding = '';
@@ -1999,6 +2053,8 @@
     oppdaterTeller();
     oppdaterKategoriSynlighet();
     lagreAlt();
+    // Re-render basislisten så nullstilte mengder/merknader reflekteres i UI
+    tegnBasisListe();
   }
 
   // ==============================
