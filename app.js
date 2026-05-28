@@ -2073,16 +2073,22 @@
         }
       });
 
-      // Lytt på sky-endringer – men IKKE overskriv hvis vi har usynkede lokale endringer
-      // Lytt på lister-meta (hvilke lister finnes)
+      // Lytt på sky-endringer for lister-meta. Firebase er sannhetskilden – hvis en
+      // liste er slettet på en enhet og borte fra Firebase, skal den også forsvinne
+      // lokalt. Tidligere brukte vi en merge-strategi som beholdt slettede lister
+      // og kunne skrive dem tilbake til Firebase ved neste lagring.
       database.ref('lister-meta').on('value', function(snap) {
+        // Hvis vi har offline-endringer ventende, ikke overskriv lokal state -
+        // vi venter med sync til offlineKø er tømt for å unngå data-tap.
+        if (offlineKø.length > 0) return;
         var data = snap.val();
-        if (data && Array.isArray(data)) {
-          // Merge: behold lokale lister, legg til nye fra sky
-          data.forEach(function(skyListe) {
-            var finnes = alleLister.some(function(l) { return l.id === skyListe.id; });
-            if (!finnes) alleLister.push(skyListe);
-          });
+        var nye;
+        if (Array.isArray(data)) nye = data;
+        else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
+        else nye = [];
+        // Bare oppdater hvis det er en faktisk endring
+        if (JSON.stringify(alleLister) !== JSON.stringify(nye)) {
+          alleLister = nye;
           localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
           tegnForside();
         }
