@@ -1842,6 +1842,13 @@
       var navn     = vareDiv.querySelector('.basis-vare-navn').textContent.trim();
       var indeks   = Array.prototype.indexOf.call(divs, vareDiv);
       var kategori = basisVarer[indeks] ? basisVarer[indeks].kategori : 'diverse';
+      // Defensive: kategori-DOM må finnes. Hvis ikke (slettet egen kategori, ikke synket,
+      // o.l.) faller vi tilbake til Diverse for å unngå krasj.
+      if (!document.getElementById(kategori)) {
+        loggFeil('Basis-overføring: kategori ' + kategori + ' finnes ikke i DOM, bruker diverse', 'overfør', '');
+        kategori = 'diverse';
+        if (basisVarer[indeks]) basisVarer[indeks].kategori = 'diverse';
+      }
       var merknadFelt = vareDiv.querySelector('.basis-merknad-input');
       var basisMerknad = merknadFelt ? merknadFelt.value.trim() : '';
       var eksisterendeLi = null;
