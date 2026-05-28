@@ -1370,39 +1370,31 @@
     document.getElementById('teller-tekst').textContent =
       (alle - handlede) + ' gjenstår · ' + handlede + ' handlet · ' + alle + ' totalt';
 
-    // Per-kategori-teller: viser antall ikke-handlede varer i hver kategori,
-    // slik at man ser hva som er igjen selv om kategorien er kollapset.
+    // Per-kategori-teller: viser antall ikke-handlede varer som del av kategori-tittelen
+    // (f.eks. "🥩 Kjøtt (3)"). Slik at man ser hva som er igjen selv når kategorien
+    // er kollapset.
     katIder.forEach(function(id) {
       var ul = document.getElementById(id);
       if (!ul) return;
       var header = document.getElementById(id + '-header');
       if (!header) return;
+      // Husker det originale tittel-navnet første gang funksjonen kjører
+      if (!header.dataset.basenavn) {
+        header.dataset.basenavn = header.textContent.trim();
+      }
+      var baseNavn = header.dataset.basenavn;
       var liElems = ul.querySelectorAll('li');
       var total = liElems.length;
       var igjen = 0;
       liElems.forEach(function(li) { if (!li.querySelector('.sjekk.huket')) igjen++; });
-      // Finn eller opprett antall-badge
-      var headerDiv = header.parentNode;
-      var badge = headerDiv.querySelector('.kategori-antall');
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'kategori-antall';
-        header.parentNode.insertBefore(badge, header.nextSibling);
-      }
       if (total === 0) {
-        badge.classList.add('tom');
+        header.textContent = baseNavn;
+      } else if (igjen === 0) {
+        header.textContent = baseNavn + ' (✓ ' + total + ')';
+      } else if (igjen === total) {
+        header.textContent = baseNavn + ' (' + total + ')';
       } else {
-        badge.classList.remove('tom');
-        if (igjen === 0) {
-          badge.textContent = '✓ ' + total;
-          badge.classList.add('ferdig');
-        } else if (igjen === total) {
-          badge.textContent = total;
-          badge.classList.remove('ferdig');
-        } else {
-          badge.textContent = igjen + '/' + total;
-          badge.classList.remove('ferdig');
-        }
+        header.textContent = baseNavn + ' (' + igjen + '/' + total + ')';
       }
     });
   }
