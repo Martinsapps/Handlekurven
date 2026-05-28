@@ -2,14 +2,14 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Handlekurven – Testplan</title>
+<title>Handlekurven – Testplan (runde 2)</title>
 <style>
   @page { size: A4; margin: 18mm 16mm; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Segoe UI", Arial, sans-serif;
     color: #222;
-    max-width: 800px;
+    max-width: 820px;
     margin: 0 auto;
     padding: 24px;
     line-height: 1.45;
@@ -20,32 +20,39 @@
     margin: 0 0 4px;
     color: #1e6b40;
   }
-  .undertittel {
-    color: #666;
-    font-size: 10pt;
-    margin-bottom: 18px;
-  }
-  .intro {
+  .undertittel { color: #666; font-size: 10pt; margin-bottom: 18px; }
+  .intro, .info-boks {
     background: #eef9f3;
     border: 1px solid #b8e8cc;
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 10pt;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
+  }
+  .info-boks {
+    background: #fff8dc;
+    border: 1px solid #e8d77a;
   }
   h2 {
     font-size: 13pt;
     color: #1e6b40;
     border-bottom: 2px solid #b8e8cc;
     padding-bottom: 4px;
-    margin: 22px 0 10px;
+    margin: 26px 0 10px;
     page-break-after: avoid;
   }
+  h2.ny { color: #1a4a78; border-bottom-color: #bdd9f0; }
   h2 .nr {
     display: inline-block;
     width: 28px;
     color: #888;
     font-weight: normal;
+  }
+  h3 {
+    font-size: 11pt;
+    color: #555;
+    margin: 14px 0 6px;
+    page-break-after: avoid;
   }
   ul {
     list-style: none;
@@ -77,7 +84,7 @@
   }
   .feilfelt {
     border-top: 1px dashed #aaa;
-    margin-top: 30px;
+    margin-top: 34px;
     padding-top: 12px;
     page-break-before: always;
   }
@@ -88,16 +95,8 @@
     gap: 12px;
     margin-bottom: 18px;
   }
-  .feillinje .nr-felt {
-    font-weight: bold;
-    width: 70px;
-    flex-shrink: 0;
-  }
-  .feillinje .strek {
-    flex: 1;
-    border-bottom: 1px solid #888;
-    height: 22px;
-  }
+  .feillinje .nr-felt { font-weight: bold; width: 110px; flex-shrink: 0; }
+  .feillinje .strek { flex: 1; border-bottom: 1px solid #888; height: 22px; }
   .print-tips {
     background: #fff8dc;
     border: 1px solid #e8d77a;
@@ -106,6 +105,19 @@
     font-size: 10pt;
     margin-bottom: 16px;
   }
+  .ny-badge {
+    display: inline-block;
+    background: #1a4a78;
+    color: white;
+    font-size: 8.5pt;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 10pt; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #ddd; }
+  th { background: #f4f4f4; }
   @media print {
     .print-tips { display: none; }
     body { padding: 0; max-width: none; }
@@ -116,180 +128,281 @@
 
 <div class="print-tips">
   <strong>Tips:</strong> Trykk Ctrl+P (eller Cmd+P) for å skrive ut eller lagre som PDF.
-  I print-dialogen velger du "Lagre som PDF" som skriver hvis du vil ha digital kopi.
 </div>
 
-<h1>🛒 Handlekurven – Testplan</h1>
-<div class="undertittel">Sjekkliste for å verifisere alle funksjoner før videre utvikling</div>
+<h1>🛒 Handlekurven – Testplan runde 2</h1>
+<div class="undertittel">Komplett verifisering etter bug-fiks, nye funksjoner og refaktorering</div>
 
 <div class="intro">
-  <strong>Anbefaling:</strong> Test i en vanlig nettleser (ikke preview), aller helst også på mobil.
-  Persistens, push-varsler og service worker fungerer ikke i preview-vinduet.
-  Gå gjennom listen i rekkefølge og noter feil bakerst i dokumentet.
+  <strong>Bakgrunn:</strong> Siden forrige testrunde har vi rettet 6 bugs, lagt til 3 nye funksjoner,
+  splittet kjøtt og fisk i to kategorier, og restrukturert filene (CSS og JS i egne filer).
+  Push-varsel-fanen er fjernet og kommer tilbake sammen med autentisering senere.
+  Denne testen verifiserer at alt fortsatt fungerer pluss alle de nye tingene.
 </div>
 
-<h2><span class="nr">1.</span>Forside / liste-oversikt</h2>
+<div class="info-boks">
+  <strong>Anbefaling:</strong> Test i vanlig nettleser <em>og</em> som installert PWA på iPhone.
+  Persistens, push-varsler og service worker fungerer ikke i preview-vinduet.
+  Tøm cache og slett tidligere PWA før du tester på nytt slik at du er sikker på at
+  du tester den nyeste versjonen.
+</div>
+
+<!-- ============================================================ -->
+<!-- DEL A — RE-VERIFISERING AV GRUNNFUNKSJONER                   -->
+<!-- ============================================================ -->
+
+<h2><span class="nr">A.</span>Re-verifisering av grunnfunksjoner</h2>
+<div class="merknad">
+  Disse fungerte i runde 1. Sjekk at file-splittingen og endringene ikke har brutt noe.
+</div>
+
+<h3>A1. Forside / liste-oversikt</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Åpne appen – tom forside viser "Ingen lister ennå"</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk "+ Ny liste", skriv navn, velg listetype (Mat/Arrangement/Hus/Bygg/Diverse), trykk Opprett</span></li>
-  <li><span class="box"></span><span class="tekst">Forsiden viser listekortet med riktig ikon og type-tekst</span></li>
-  <li><span class="box"></span><span class="tekst">Opprett 2–3 lister av ulike typer – alle vises korrekt</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk på en liste – åpner listevisningen</span></li>
-  <li><span class="box"></span><span class="tekst">Tilbake-knappen "← Alle lister" returnerer til forsiden</span></li>
-  <li><span class="box"></span><span class="tekst">Long-press på listekort (mobil) eller høyreklikk (desktop) åpner rediger-modal</span></li>
-  <li><span class="box"></span><span class="tekst">Endre navn og trykk Lagre – nytt navn vises på kortet</span></li>
-  <li><span class="box"></span><span class="tekst">Slett en liste – krever bekreftelse, forsvinner deretter</span></li>
+  <li><span class="box"></span><span class="tekst">Åpne appen – forsiden viser eksisterende lister eller "Ingen lister ennå"</span></li>
+  <li><span class="box"></span><span class="tekst">"+ Ny liste" → modalen åpnes med navnefelt og listetype-velger</span></li>
+  <li><span class="box"></span><span class="tekst">Opprett en ny liste – kortet vises med riktig ikon og type-tekst</span></li>
+  <li><span class="box"></span><span class="tekst">Åpne en liste – tilbake-knappen returnerer til forsiden</span></li>
+  <li><span class="box"></span><span class="tekst">Long-press på listekort → rediger-modal åpnes</span></li>
 </ul>
 
-<h2><span class="nr">2.</span>Legge til varer</h2>
+<h3>A2. Legge til varer</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Skriv varenavn (f.eks. "Bananer") – kategori foreslås automatisk ("💡 Foreslår: Frukt og grønt")</span></li>
-  <li><span class="box"></span><span class="tekst">Autofullføring vises etter ett tegn – pil ned/opp + Enter for å velge</span></li>
+  <li><span class="box"></span><span class="tekst">Skriv et varenavn – autofullføring vises etter ett tegn</span></li>
   <li><span class="box"></span><span class="tekst">Velg fra autofullføringen – varen legges direkte til</span></li>
-  <li><span class="box"></span><span class="tekst">Skriv eget navn (ikke i ordlisten) – "Legg til som ny vare" vises</span></li>
-  <li><span class="box"></span><span class="tekst">Legg til vare med mengde + enhet (f.eks. 2 liter melk) – badge vises ved varen</span></li>
-  <li><span class="box"></span><span class="tekst">Endre kategori manuelt før du trykker "+ Legg til"</span></li>
-  <li><span class="box"></span><span class="tekst">Enter-tast i navnefeltet legger til varen</span></li>
-  <li><span class="box"></span><span class="tekst">Duplikat-test: skriv samme navn som finnes – advarsel "⚠️ X er allerede på listen"</span></li>
-  <li><span class="box"></span><span class="tekst">Lignende navn – tips "💡 Du har Y på listen – mente du det?"</span></li>
+  <li><span class="box"></span><span class="tekst">Kategori foreslås automatisk basert på varenavn</span></li>
+  <li><span class="box"></span><span class="tekst">Pil ned/opp + Enter for å velge i autofullføringen</span></li>
+  <li><span class="box"></span><span class="tekst">Legg til vare med mengde + enhet – badge vises</span></li>
+  <li><span class="box"></span><span class="tekst">Duplikatsjekk for eksakt match utløses</span></li>
 </ul>
 
-<h2><span class="nr">3.</span>Vare-interaksjoner</h2>
+<h3>A3. Vare-interaksjoner</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Huk av vare – grå sirkel med ✓, gjennomstreket navn</span></li>
-  <li><span class="box"></span><span class="tekst">Telleren oppdateres ("X gjenstår · Y handlet · Z totalt")</span></li>
-  <li><span class="box"></span><span class="tekst">Huk av igjen – varen blir ikke-handlet</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk 📝 – rediger-panel med mengde, enhet og merknad</span></li>
-  <li><span class="box"></span><span class="tekst">Endre mengde + lagre – ny mengde vises</span></li>
-  <li><span class="box"></span><span class="tekst">Legg til merknad ("kjøp lavfett") + lagre – vises under varenavnet</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk ⇄ – flytt-meny åpnes med alle kategorier</span></li>
-  <li><span class="box"></span><span class="tekst">Flytt vare til annen kategori – flyttes umiddelbart</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk × – varen slettes (uten bekreftelse)</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk "A–Å" på en kategori – varene sorteres alfabetisk</span></li>
-  <li><span class="box"></span><span class="tekst">Klikk på kategori-tittel – kategorien kollapses</span></li>
+  <li><span class="box"></span><span class="tekst">Huk av/på en vare – teller oppdateres</span></li>
+  <li><span class="box"></span><span class="tekst">📝 redigerings-panel – endre mengde og merknad</span></li>
+  <li><span class="box"></span><span class="tekst">⇄ flytte-meny – flytt vare til annen kategori</span></li>
+  <li><span class="box"></span><span class="tekst">× sletter vare uten bekreftelse</span></li>
+  <li><span class="box"></span><span class="tekst">A–Å-knapp sorterer kategorien</span></li>
+  <li><span class="box"></span><span class="tekst">Klikk på kategori-tittel kollapser kategorien</span></li>
 </ul>
 
-<h2><span class="nr">4.</span>Liste-handlinger</h2>
+<h3>A4. Liste-handlinger</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Slå på "Skjul handlede varer" – avkryssede varer forsvinner</span></li>
-  <li><span class="box"></span><span class="tekst">Hak av en vare – den forsvinner umiddelbart fra synet</span></li>
-  <li><span class="box"></span><span class="tekst">Slå av bryteren – varene kommer tilbake</span></li>
-  <li><span class="box"></span><span class="tekst">"🗑 Slett handlede" – krever bekreftelse, sletter kun handlede</span></li>
-  <li><span class="box"></span><span class="tekst">"🗑 Tøm listen" – krever bekreftelse, sletter alt</span></li>
-  <li><span class="box"></span><span class="tekst">Tomme kategorier vises ikke i listen</span></li>
+  <li><span class="box"></span><span class="tekst">"Skjul handlede varer" toggle fungerer begge veier</span></li>
+  <li><span class="box"></span><span class="tekst">🗑 Slett handlede – krever bekreftelse</span></li>
+  <li><span class="box"></span><span class="tekst">🗑 Tøm listen – krever bekreftelse</span></li>
+  <li><span class="box"></span><span class="tekst">Tomme kategorier vises ikke</span></li>
 </ul>
 
-<h2><span class="nr">5.</span>Sidebar (☰ øverst i en liste)</h2>
+<h3>A5. Sidebar</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Åpne sidebar – 4 faner vises: ⭐ Basis, 🗂 Kat., 🖨 Skriv, 🔔 Varsle</span></li>
-  <li><span class="box"></span><span class="tekst">Bytt mellom fanene – riktig innhold vises</span></li>
-  <li><span class="box"></span><span class="tekst">Lukk sidebar med × eller ved å trykke utenfor</span></li>
+  <li><span class="box"></span><span class="tekst">Sidebar har nå <strong>3 faner</strong>: ⭐ Basis, 🗂 Kat., 🖨 Skriv (Varsle er fjernet)</span></li>
+  <li><span class="box"></span><span class="tekst">Bytte mellom fanene viser riktig innhold</span></li>
+  <li><span class="box"></span><span class="tekst">Lukke sidebar med × eller trykk utenfor</span></li>
 </ul>
 
-<h2><span class="nr">6.</span>Basisliste (⭐ Basis-fanen)</h2>
+<h3>A6. Basisliste</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Standard basisvarer vises (Melk, Smør, Egg osv.)</span></li>
-  <li><span class="box"></span><span class="tekst">Kryss av 2–3 varer – teller sier "X vare(r) klar til overføring"</span></li>
-  <li><span class="box"></span><span class="tekst">"✓ Overfør avkryssede til handlelisten" – varene legges til, krysset nullstilles</span></li>
-  <li><span class="box"></span><span class="tekst">Skriv ny basisvare ("Druer") – kategori foreslås automatisk</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk + for å legge til – ny vare vises i basislisten</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk × på basisvare – slettes</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk 📝, skriv merknad, ut av feltet – merknad lagres</span></li>
-  <li><span class="box"></span><span class="tekst">Kryss av varen og overfør – merknaden følger med</span></li>
-  <li><span class="box"></span><span class="tekst"><strong>Per-liste-test:</strong> opprett to lister, legg ulike basisvarer i hver – de skal være separate</span></li>
+  <li><span class="box"></span><span class="tekst">Standard basisvarer vises</span></li>
+  <li><span class="box"></span><span class="tekst">Kryss av varer – teller "X klar til overføring"</span></li>
+  <li><span class="box"></span><span class="tekst">Overfør avkryssede til hovedlisten</span></li>
+  <li><span class="box"></span><span class="tekst">Legge til ny basisvare med kategori</span></li>
+  <li><span class="box"></span><span class="tekst">📝 merknad på basisvare – følger med ved overføring</span></li>
+  <li><span class="box"></span><span class="tekst">× sletter basisvare</span></li>
+  <li><span class="box"></span><span class="tekst">Basislister er separate per handleliste (per-liste-test)</span></li>
 </ul>
 
-<h2><span class="nr">7.</span>Egne kategorier (🗂 Kat.-fanen)</h2>
+<h3>A7. Offline og sync</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">"+ Legg til egen kategori" – åpner panel</span></li>
-  <li><span class="box"></span><span class="tekst">Skriv navn + velg farge + Opprett</span></li>
-  <li><span class="box"></span><span class="tekst">Den nye kategorien vises nederst i hovedlisten med riktig farge</span></li>
-  <li><span class="box"></span><span class="tekst">Den nye kategorien er nå et alternativ i "Legg til vare"-nedtrekksmenyen</span></li>
-  <li><span class="box"></span><span class="tekst">Den er også i basislistens kategori-velger</span></li>
-  <li><span class="box"></span><span class="tekst">Legg til en vare i den nye kategorien</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk × på kategori-tittelen – bekreftelsesspørsmål siden den har varer</span></li>
-  <li><span class="box"></span><span class="tekst">Bekreft – varer flyttes til Diverse, kategorien forsvinner</span></li>
-  <li><span class="box"></span><span class="tekst">Slett en tom egen kategori – ingen bekreftelse nødvendig</span></li>
+  <li><span class="box"></span><span class="tekst">Slå av wifi – status "🔴 Frakoblet"</span></li>
+  <li><span class="box"></span><span class="tekst">Endringer offline lagres lokalt og kø vises</span></li>
+  <li><span class="box"></span><span class="tekst">Nett på igjen – synkronisering kjører ("🟡 Syncer..." → "🟢 Koblet til sky")</span></li>
+  <li><span class="box"></span><span class="tekst">Endringer dukker opp på andre enhet</span></li>
 </ul>
 
-<h2><span class="nr">8.</span>Handlehistorikk og forslag</h2>
-<div class="merknad">Krever historikk, lett å teste hvis appen har vært brukt en stund. Ellers hopp over.</div>
+<!-- ============================================================ -->
+<!-- DEL B — BUG-FIKSER FRA RUNDE 1                               -->
+<!-- ============================================================ -->
+
+<h2 class="ny"><span class="nr">B.</span>Bug-fikser fra runde 1 <span class="ny-badge">FIKS</span></h2>
+
+<h3>B1. Sanntidssync ved tom liste og slett handlede</h3>
+<div class="merknad">Krever to enheter eller to faner åpne samtidig.</div>
 <ul>
-  <li><span class="box"></span><span class="tekst">Etter avkryssing av samme vare flere "uker" – forslag dukker opp under basislisten</span></li>
-  <li><span class="box"></span><span class="tekst">"+ Basis" legger forslaget til basislisten</span></li>
-  <li><span class="box"></span><span class="tekst">× avviser forslaget – vises ikke igjen</span></li>
+  <li><span class="box"></span><span class="tekst">Åpne samme liste på to enheter. Tøm listen på den ene → den andre tømmes også</span></li>
+  <li><span class="box"></span><span class="tekst">Slett handlede på den ene → den andre reflekterer det</span></li>
+  <li><span class="box"></span><span class="tekst">Slett alle basisvarer på en enhet → den andre viser tom basisliste umiddelbart</span></li>
+  <li><span class="box"></span><span class="tekst">Legge til ny basisvare på en enhet → den andre ser den uten å lukke/åpne sidebar</span></li>
 </ul>
 
-<h2><span class="nr">9.</span>Skriv ut (🖨 Skriv-fanen)</h2>
+<h3>B2. Egne kategorier (3 sub-fikser)</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Trykk "🖨 Skriv ut handleliste" – print-dialog åpnes</span></li>
-  <li><span class="box"></span><span class="tekst">Forhåndsvisning viser ren liste uten knapper og kontroller</span></li>
+  <li><span class="box"></span><span class="tekst">🗂 Kat.-fanen viser liste over egne kategorier (eller "Ingen egne kategorier ennå")</span></li>
+  <li><span class="box"></span><span class="tekst">Opprett ny egen kategori – vises i listen umiddelbart med riktig farge</span></li>
+  <li><span class="box"></span><span class="tekst">× på egen kategori i sidebar-listen sletter den (med bekreftelse hvis den har varer)</span></li>
+  <li><span class="box"></span><span class="tekst">Predefinerte kategorier kan IKKE slettes (ingen × på Kjøtt, Meieri osv.)</span></li>
+  <li><span class="box"></span><span class="tekst">Velge en egen kategori i basisliste-nedtrekken respekteres (overstyres ikke av auto-forslag)</span></li>
 </ul>
 
-<h2><span class="nr">10.</span>Push-varsler (🔔 Varsle-fanen)</h2>
-<div class="merknad">Krever HTTPS eller localhost, fungerer ikke fra file://</div>
+<h3>B3. Skriv ut handleliste</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Status vises riktig (ikke aktivert / aktivert / blokkert)</span></li>
-  <li><span class="box"></span><span class="tekst">"Aktiver push-varsler" → nettleser spør om tillatelse</span></li>
-  <li><span class="box"></span><span class="tekst">Etter aksept – "Send varsel til samboer"-knappen vises</span></li>
-  <li><span class="box"></span><span class="tekst">Trykk Send – grønn bekreftelse "✓ Varsel sendt!"</span></li>
+  <li><span class="box"></span><span class="tekst">Trykk "🖨 Skriv ut handleliste" – sidebar lukkes og print-dialog åpnes</span></li>
+  <li><span class="box"></span><span class="tekst">Forhåndsvisningen viser <strong>handlelisten med varer</strong>, ikke sidebaren</span></li>
+  <li><span class="box"></span><span class="tekst">Tomme kategorier vises på utskriften (så du kan skrive til varer på papiret)</span></li>
 </ul>
 
-<h2><span class="nr">11.</span>Sanntidssynkronisering</h2>
-<div class="merknad">Krever to enheter eller to faner åpne samtidig</div>
+<h3>B4. Lignende navn-varsel</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Åpne samme liste på to enheter/faner</span></li>
-  <li><span class="box"></span><span class="tekst">Legg til vare i den ene – dukker opp i den andre etter et øyeblikk</span></li>
-  <li><span class="box"></span><span class="tekst">Hak av vare i den ene – haket vises i den andre</span></li>
-  <li><span class="box"></span><span class="tekst">Status nederst (🟢 Koblet til sky) er grønn når nett er på</span></li>
+  <li><span class="box"></span><span class="tekst">Legg til "Fiskekaker", skriv "fiskekake" → 💡 "Du har Fiskekaker på listen"</span></li>
+  <li><span class="box"></span><span class="tekst">Legg til "Fiskekaker", skriv "fiskekakene" → 💡 advarsel (Levenshtein fanger bøyninger)</span></li>
+  <li><span class="box"></span><span class="tekst">Legg til "Kjøttdeig", skriv "kjøtdeig" (typo) → 💡 advarsel</span></li>
+  <li><span class="box"></span><span class="tekst">Legg til "Melk", skriv "Mel" → INGEN advarsel (forskjellige kategorier)</span></li>
+  <li><span class="box"></span><span class="tekst">Legg til "Kjøttdeig", skriv "kjøttboller" → INGEN advarsel (ulike ord i samme kategori)</span></li>
+  <li><span class="box"></span><span class="tekst">Advarsel vises <strong>over</strong> input-feltet, ikke under (autofullføring skjuler den ikke)</span></li>
 </ul>
 
-<h2><span class="nr">12.</span>Offline-modus</h2>
+<h3>B5. App-ikonet</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Slå av wifi/mobildata</span></li>
-  <li><span class="box"></span><span class="tekst">Status endres til "🔴 Frakoblet"</span></li>
-  <li><span class="box"></span><span class="tekst">Legg til, hak av og slett varer – fungerer fortsatt</span></li>
-  <li><span class="box"></span><span class="tekst">Status viser "X endring(er) venter på sync"</span></li>
-  <li><span class="box"></span><span class="tekst">Slå på nett igjen – status går til "🟡 Syncer..." og deretter "🟢 Koblet til sky"</span></li>
-  <li><span class="box"></span><span class="tekst">Endringene dukker opp på andre enheter</span></li>
+  <li><span class="box"></span><span class="tekst">Slett gammel PWA fra hjemskjerm + tøm Safari-cache</span></li>
+  <li><span class="box"></span><span class="tekst">Installer på nytt – ikonet viser en hvit handletralle på grønn bakgrunn</span></li>
+  <li><span class="box"></span><span class="tekst">Ingen rare hvite hjørner eller artefakter</span></li>
 </ul>
 
-<h2><span class="nr">13.</span>PWA / Mobil</h2>
+<!-- ============================================================ -->
+<!-- DEL C — NYE FUNKSJONER (ØNSKER FRA RUNDE 1)                  -->
+<!-- ============================================================ -->
+
+<h2 class="ny"><span class="nr">C.</span>Nye funksjoner <span class="ny-badge">NY</span></h2>
+
+<h3>C1. Endre kategori ved redigering av liste</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Mørk modus aktiveres automatisk basert på systeminnstillinger</span></li>
-  <li><span class="box"></span><span class="tekst">På iPhone: del → "Legg til på Hjem-skjerm" fungerer</span></li>
-  <li><span class="box"></span><span class="tekst">På Android: meny → "Installer app" fungerer</span></li>
-  <li><span class="box"></span><span class="tekst">App-ikonet vises korrekt på hjem-skjermen</span></li>
-  <li><span class="box"></span><span class="tekst">App åpnes i fullskjerm uten nettleser-UI</span></li>
+  <li><span class="box"></span><span class="tekst">Long-press eller høyreklikk på liste-kort – modalen heter "Rediger liste"</span></li>
+  <li><span class="box"></span><span class="tekst">Modalen viser navnefelt + kategori-velger, nåværende kategori uthevet</span></li>
+  <li><span class="box"></span><span class="tekst">Endre kategori (f.eks. fra Mathandling til Arrangement) + Lagre</span></li>
+  <li><span class="box"></span><span class="tekst">Listekortet på forsiden viser nytt ikon og type-tekst</span></li>
+  <li><span class="box"></span><span class="tekst">Tittelen på listen oppdateres med nytt ikon hvis listen er åpen</span></li>
+  <li><span class="box"></span><span class="tekst">Endre kun navn (uten å bytte kategori) – kategorien beholdes</span></li>
+  <li><span class="box"></span><span class="tekst">Slett liste-knappen er synlig i rediger-modus</span></li>
 </ul>
 
-<h2><span class="nr">14.</span>Edge cases / robusthet</h2>
+<h3>C2. Fisk og skalldyr som egen kategori</h3>
 <ul>
-  <li><span class="box"></span><span class="tekst">Lukk appen midt i en redigering – data er bevart når du åpner igjen</span></li>
-  <li><span class="box"></span><span class="tekst">Opprett liste med veldig langt navn (40 tegn) – avkortes pent på kortet</span></li>
-  <li><span class="box"></span><span class="tekst">Tom liste – ingen kategorier vises</span></li>
-  <li><span class="box"></span><span class="tekst">Bruk emoji i varenavn – fungerer</span></li>
-  <li><span class="box"></span><span class="tekst">Skriv inn vare med tall (f.eks. "1l Cola") – fungerer</span></li>
+  <li><span class="box"></span><span class="tekst">Listevisningen har nå <strong>🥩 Kjøtt</strong> og <strong>🐟 Fisk og skalldyr</strong> som separate kategorier</span></li>
+  <li><span class="box"></span><span class="tekst">Skriv "Laks" – kategori-forslag er 🐟 Fisk og skalldyr</span></li>
+  <li><span class="box"></span><span class="tekst">Skriv "Biff" – kategori-forslag er 🥩 Kjøtt</span></li>
+  <li><span class="box"></span><span class="tekst">Skriv "Fiskekaker", "Reker", "Torsk" – havner alle i fisk</span></li>
+  <li><span class="box"></span><span class="tekst">Begge kategorier finnes i nedtrekksmenyer (legg-til + basisliste)</span></li>
+  <li><span class="box"></span><span class="tekst">Eksisterende fisk-varer som lå i Kjøtt før, er nå migrert til Fisk (sjekk dine lister)</span></li>
 </ul>
+
+<h3>C3. Utvidet ordliste + auto-læring</h3>
+<ul>
+  <li><span class="box"></span><span class="tekst">Autofullføring foreslår nå mange flere norske varer (test: "Mozza...", "Kiwi", "Couscous", "Surdeigs...", "Klorin", "Brioche", "Kvinoa")</span></li>
+  <li><span class="box"></span><span class="tekst">Når du skriver noe som ikke matcher, kommer det ikke lenger en "Legg til som ny vare"-prompt – feltene for kategori/mengde/enhet er synlige</span></li>
+  <li><span class="box"></span><span class="tekst">⭐ vises ved siden av varer du har handlet 3+ ganger siste 3 mnd (krever historikk – test over tid)</span></li>
+</ul>
+
+<h3>C4. Smart mengde-parsing</h3>
+<table>
+  <tr><th>Skriv inn</th><th>Forventet resultat</th></tr>
+  <tr><td><code>2l melk</code></td><td>Melk, 2 liter, i Meieri</td></tr>
+  <tr><td><code>2 liter melk</code></td><td>Melk, 2 liter, i Meieri</td></tr>
+  <tr><td><code>2kg mel</code></td><td>Mel, 2 kg, i Basisvarer</td></tr>
+  <tr><td><code>2kilo mel</code></td><td>Mel, 2 kg, i Basisvarer</td></tr>
+  <tr><td><code>1 kilogram poteter</code></td><td>Poteter, 1 kg</td></tr>
+  <tr><td><code>8stk meloner</code></td><td>Meloner, 8 stk</td></tr>
+  <tr><td><code>8 meloner</code></td><td>Meloner, 8 stk (uten enhet = stk)</td></tr>
+  <tr><td><code>40g rosiner</code></td><td>Rosiner, 40 g</td></tr>
+  <tr><td><code>0,5l krem</code></td><td>Krem, 0.5 liter (norsk komma)</td></tr>
+  <tr><td><code>2 hekto skinke</code></td><td>Skinke, 200 g (konvertering hekto→g)</td></tr>
+  <tr><td><code>3hg kjøttdeig</code></td><td>Kjøttdeig, 300 g</td></tr>
+  <tr><td><code>1 hektogram pålegg</code></td><td>Pålegg, 100 g</td></tr>
+  <tr><td><code>3 pakker pasta</code></td><td>Pasta, 3 pk</td></tr>
+  <tr><td><code>2 flasker brus</code></td><td>Brus, 2 flaske</td></tr>
+  <tr><td><code>Melk 2l</code></td><td>Melk, 2 liter (navn først også OK)</td></tr>
+</table>
+<ul>
+  <li><span class="box"></span><span class="tekst">Alle eksemplene over fungerer som beskrevet</span></li>
+  <li><span class="box"></span><span class="tekst"><code>Melk</code> alene fungerer som før (vanlig flyt, bruker antall/enhet-feltene)</span></li>
+  <li><span class="box"></span><span class="tekst"><code>2kg</code> alene blir ikke en vare som heter "Kg" (defensiv parsing)</span></li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- DEL D — REFAKTORERING                                        -->
+<!-- ============================================================ -->
+
+<h2 class="ny"><span class="nr">D.</span>Etter file-splittingen <span class="ny-badge">REFAKTOR</span></h2>
+<div class="merknad">
+  CSS og JS er splittet ut i egne filer (style.css og app.js). Skal ikke
+  påvirke funksjonalitet, men verifiser at alt fortsatt fungerer.
+</div>
+<ul>
+  <li><span class="box"></span><span class="tekst">Åpne appen i en helt fersk nettleser-fane – siden laster uten feil</span></li>
+  <li><span class="box"></span><span class="tekst">Alle stiler ser riktige ut (farger, fonter, knapper, sidebar)</span></li>
+  <li><span class="box"></span><span class="tekst">Mørk modus aktiveres automatisk hvis systemet er i mørk</span></li>
+  <li><span class="box"></span><span class="tekst">Eksisterende lister og varer er bevart</span></li>
+  <li><span class="box"></span><span class="tekst">Service worker oppdaterer – cache v7</span></li>
+  <li><span class="box"></span><span class="tekst">Appen fungerer som installert PWA på iPhone</span></li>
+  <li><span class="box"></span><span class="tekst">Offline-modus fungerer (test ved å slå av nett)</span></li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- DEL E — EDGE CASES OG SPESIELLE TILFELLER                    -->
+<!-- ============================================================ -->
+
+<h2><span class="nr">E.</span>Edge cases</h2>
+<ul>
+  <li><span class="box"></span><span class="tekst">Lukk appen midt i redigering – data er bevart ved oppstart</span></li>
+  <li><span class="box"></span><span class="tekst">Veldig langt liste-navn (40 tegn) – avkortes pent på kortet</span></li>
+  <li><span class="box"></span><span class="tekst">Bruk emoji i varenavn ("🍕 Pizza") – fungerer</span></li>
+  <li><span class="box"></span><span class="tekst">Skriv vare som matcher en ordliste-vare med stor/liten bokstav – kategorien settes likevel</span></li>
+  <li><span class="box"></span><span class="tekst">Tom liste – ingen kategorier vises, bare "Legg til vare"-feltet</span></li>
+  <li><span class="box"></span><span class="tekst">Bytt mellom flere lister – data følger riktig liste</span></li>
+  <li><span class="box"></span><span class="tekst">Opprett egen kategori med <em>norsk</em> tegn (æ/ø/å) i navnet – fungerer</span></li>
+  <li><span class="box"></span><span class="tekst">Flytte vare til egen kategori i hovedlisten</span></li>
+  <li><span class="box"></span><span class="tekst">Sortere en kategori der noen varer er huket av</span></li>
+  <li><span class="box"></span><span class="tekst">Rediger en vare som er huket av – endringene beholder huket tilstand</span></li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- DEL F — IPHONE / PWA-SPESIFIKT                               -->
+<!-- ============================================================ -->
+
+<h2><span class="nr">F.</span>iPhone / PWA</h2>
+<ul>
+  <li><span class="box"></span><span class="tekst">Slett gammel PWA → tøm Safari-cache → installer på nytt fra Safari</span></li>
+  <li><span class="box"></span><span class="tekst">Ikonet på hjemskjermen viser handletrallen riktig</span></li>
+  <li><span class="box"></span><span class="tekst">App-tittelen på hjemskjermen er "Handlekurven"</span></li>
+  <li><span class="box"></span><span class="tekst">Åpner i fullskjerm uten Safari-UI</span></li>
+  <li><span class="box"></span><span class="tekst">Mørk modus toggle på iPhone reflekteres i appen</span></li>
+  <li><span class="box"></span><span class="tekst">Long-press på listekort åpner rediger-modal</span></li>
+  <li><span class="box"></span><span class="tekst">Tastatur skjuler ikke duplikat-advarselen over input-feltet</span></li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- FEILRAPPORT                                                  -->
+<!-- ============================================================ -->
 
 <div class="feilfelt">
-  <h2>⚠ Feilrapport</h2>
+  <h2>⚠ Feilrapport og observasjoner</h2>
   <p style="font-size:10pt;color:#666;margin-bottom:14px;">
-    Noter eventuelle feil her. Skriv punkt-nr fra listen + en kort beskrivelse av hva som gikk galt.
+    Noter feil eller observasjoner her. Skriv seksjon (A1, B4, C4 osv.) + en kort beskrivelse av hva som gikk galt.
   </p>
 
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
-  <div class="feillinje"><span class="nr-felt">Pkt:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
+  <div class="feillinje"><span class="nr-felt">Seksjon:</span><span class="strek"></span></div>
 </div>
 
 </body>
