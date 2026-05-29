@@ -335,14 +335,49 @@
 
 </div>
 
+<button class="tilbakemelding-knapp" id="tilbakemelding-knapp" onclick="åpneTilbakemeldingModal()" title="Send tilbakemelding">💬</button>
+
 <button class="feillogg-knapp" id="feillogg-knapp" onclick="toggleFeillogg()" title="Vis feillogg">⚠</button>
 <div class="feillogg-panel" id="feillogg-panel">
   <div class="feillogg-tittel">
-    <span>⚠ Feillogg – send bilde til Claude</span>
+    <span>⚠ Feillogg</span>
+    <button class="feillogg-rapport" onclick="sendFeilSomRapport()">📧 Send som rapport</button>
     <button class="feillogg-tøm" onclick="tømFeillogg()">Tøm</button>
   </div>
   <div id="feillogg-innhold">
     <p class="feillogg-tom">Ingen feil registrert ✓</p>
+  </div>
+</div>
+
+<!-- TILBAKEMELDING MODAL -->
+<div class="tilbakemelding-overlay" id="tilbakemelding-overlay">
+  <div class="tilbakemelding-modal">
+    <h2>💬 Send tilbakemelding</h2>
+    <p class="tilbakemelding-intro">Hjelp oss å forbedre Handlekurven – fortell hva du har opplevd, ønsker eller lurer på.</p>
+
+    <div class="tilbakemelding-felt">
+      <div class="tilbakemelding-etikett">Type</div>
+      <div class="tilbakemelding-type-chips" id="tilbakemelding-type-chips">
+        <button class="tilbakemelding-type-chip valgt" data-type="feil"     onclick="velgTilbakemeldingType(this)">🐞 Feil</button>
+        <button class="tilbakemelding-type-chip"       data-type="forslag"  onclick="velgTilbakemeldingType(this)">💡 Forslag</button>
+        <button class="tilbakemelding-type-chip"       data-type="spørsmål" onclick="velgTilbakemeldingType(this)">❓ Spørsmål</button>
+        <button class="tilbakemelding-type-chip"       data-type="annet"    onclick="velgTilbakemeldingType(this)">📝 Annet</button>
+      </div>
+    </div>
+
+    <div class="tilbakemelding-felt">
+      <div class="tilbakemelding-etikett">Beskrivelse</div>
+      <textarea class="tilbakemelding-textarea" id="tilbakemelding-melding" rows="5" placeholder="Hva opplevde du? Vær gjerne så konkret som mulig."></textarea>
+    </div>
+
+    <div class="tilbakemelding-suksess" id="tilbakemelding-suksess">
+      ✓ Takk for tilbakemeldingen! Den er mottatt og vil bli vurdert.
+    </div>
+
+    <div class="tilbakemelding-knapper">
+      <button class="tilbakemelding-avbryt" onclick="lukkTilbakemeldingModal()">Avbryt</button>
+      <button class="tilbakemelding-send" id="tilbakemelding-send-knapp" onclick="sendTilbakemelding()">Send</button>
+    </div>
   </div>
 </div>
 

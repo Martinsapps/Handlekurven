@@ -1111,6 +1111,102 @@
     document.getElementById('feillogg-knapp').classList.remove('aktiv');
     document.getElementById('feillogg-panel').classList.remove('synlig');
   }
+
+  // ==============================
+  // TILBAKEMELDING (lagres i Firebase)
+  // ==============================
+  // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
+  // med CACHE_NAME i service-worker.js.
+  var APP_VERSJON = 'matplan-v10';
+  var valgtTilbakemeldingType = 'feil';
+
+  function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
+    var type = forhåndsType || 'feil';
+    valgtTilbakemeldingType = type;
+    document.querySelectorAll('.tilbakemelding-type-chip').forEach(function(chip) {
+      chip.classList.toggle('valgt', chip.dataset.type === type);
+    });
+    var textarea = document.getElementById('tilbakemelding-melding');
+    textarea.value = forhåndsMelding || '';
+    document.getElementById('tilbakemelding-suksess').classList.remove('synlig');
+    var sendKnapp = document.getElementById('tilbakemelding-send-knapp');
+    sendKnapp.disabled = false;
+    sendKnapp.textContent = 'Send';
+    document.getElementById('tilbakemelding-overlay').classList.add('synlig');
+    setTimeout(function() { textarea.focus(); }, 100);
+  }
+
+  function lukkTilbakemeldingModal() {
+    document.getElementById('tilbakemelding-overlay').classList.remove('synlig');
+    document.getElementById('tilbakemelding-melding').value = '';
+  }
+
+  function velgTilbakemeldingType(el) {
+    valgtTilbakemeldingType = el.dataset.type;
+    document.querySelectorAll('.tilbakemelding-type-chip').forEach(function(chip) {
+      chip.classList.toggle('valgt', chip === el);
+    });
+  }
+
+  function sendTilbakemelding() {
+    var melding = document.getElementById('tilbakemelding-melding').value.trim();
+    var sendKnapp = document.getElementById('tilbakemelding-send-knapp');
+    if (!melding) {
+      var textarea = document.getElementById('tilbakemelding-melding');
+      textarea.style.borderColor = 'var(--red)';
+      textarea.focus();
+      setTimeout(function() { textarea.style.borderColor = ''; }, 1500);
+      return;
+    }
+    if (!database || !erKoblet) {
+      sendKnapp.textContent = 'Du må være tilkoblet';
+      setTimeout(function() { sendKnapp.textContent = 'Send'; }, 2500);
+      return;
+    }
+    sendKnapp.disabled = true;
+    sendKnapp.textContent = 'Sender...';
+    // Bygg objektet – inkluderer kontekst-info så feil kan diagnostiseres
+    var aktivListe = null;
+    if (aktivListeId) {
+      aktivListe = alleLister.find(function(l) { return l.id === aktivListeId; });
+    }
+    var rapport = {
+      type: valgtTilbakemeldingType,
+      melding: melding,
+      feilkoder: feilListe.slice(),
+      aktivListeId: aktivListeId || null,
+      listeType: aktivListe ? (aktivListe.type || 'mat') : null,
+      enhet: navigator.userAgent,
+      appVersjon: APP_VERSJON,
+      dato: new Date().toISOString()
+    };
+    database.ref('tilbakemeldinger').push(rapport).then(function() {
+      document.getElementById('tilbakemelding-suksess').classList.add('synlig');
+      sendKnapp.textContent = 'Sendt ✓';
+      setTimeout(function() { lukkTilbakemeldingModal(); }, 1800);
+    }).catch(function(err) {
+      sendKnapp.disabled = false;
+      sendKnapp.textContent = 'Feilet – prøv igjen';
+      loggFeil('Tilbakemelding feilet: ' + err.message, 'firebase', '');
+    });
+  }
+
+  function sendFeilSomRapport() {
+    // Bygg en lesbar tekst-versjon av feilkodene som forhånds-utfylles i meldingen
+    var feilTekst = '';
+    if (feilListe.length === 0) {
+      feilTekst = '(Ingen aktive feilkoder)';
+    } else {
+      feilTekst = 'Feilkoder fra appen:\n\n';
+      for (var i = feilListe.length - 1; i >= 0; i--) {
+        var f = feilListe[i];
+        feilTekst += '[' + f.tid + '] ' + (f.kilde || '') + (f.linje ? ' linje ' + f.linje : '') + '\n' + f.melding + '\n\n';
+      }
+      feilTekst += '\n---\nHva gjorde du da feilen oppsto?\n';
+    }
+    document.getElementById('feillogg-panel').classList.remove('synlig');
+    åpneTilbakemeldingModal('feil', feilTekst);
+  }
   // Meldinger som skal ignoreres – ikke ekte feil
   var ignoreMeldinger = [
     'ServiceWorker', 'service-worker', 'InvalidStateError',
