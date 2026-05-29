@@ -2388,6 +2388,12 @@
   oppdaterKategoriSynlighet();
   initFirebase();
 
+  // MIDLERTIDIG: Test-feil for å verifisere feilrapport-flyten.
+  // Fjernes etter at brukeren har testet 'Send som rapport'-knappen.
+  setTimeout(function() {
+    loggFeil('TEST: Dette er en testfeil for å verifisere rapport-knappen. Trykk på ⚠-knappen → 📧 Send som rapport.', 'test', 'app.js:0');
+  }, 1500);
+
 // ============================================================
 // Service worker-registrering
 // ============================================================
