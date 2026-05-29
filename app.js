@@ -1117,7 +1117,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v10';
+  var APP_VERSJON = 'matplan-v12';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2387,12 +2387,6 @@
   oppdaterTeller();
   oppdaterKategoriSynlighet();
   initFirebase();
-
-  // MIDLERTIDIG: Test-feil for å verifisere feilrapport-flyten.
-  // Fjernes etter at brukeren har testet 'Send som rapport'-knappen.
-  setTimeout(function() {
-    loggFeil('TEST: Dette er en testfeil for å verifisere rapport-knappen. Trykk på ⚠-knappen → 📧 Send som rapport.', 'test', 'app.js:0');
-  }, 1500);
 
 // ============================================================
 // Service worker-registrering
