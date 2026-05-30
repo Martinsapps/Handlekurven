@@ -1117,7 +1117,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v12';
+  var APP_VERSJON = 'matplan-v13-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2373,6 +2373,130 @@
   }
 
   // ==============================
+  // AUTHENTICATION (Google Sign-In via Firebase Auth)
+  // ==============================
+  // Aktuell innlogget bruker (firebase.User-objekt) - null hvis ikke innlogget
+  var bruker = null;
+
+  function initAuth() {
+    if (typeof firebase === 'undefined' || !firebase.auth) {
+      loggFeil('Auth: firebase.auth ikke lastet', 'auth', '');
+      return;
+    }
+    // Håndter retur fra Google etter signInWithRedirect
+    firebase.auth().getRedirectResult().then(function(result) {
+      // Hvis result.user finnes betyr det at brukeren nettopp logget inn via redirect.
+      // onAuthStateChanged håndterer det videre - vi trenger ikke gjøre noe ekstra her.
+    }).catch(function(err) {
+      var statusEl = document.getElementById('login-status');
+      if (statusEl) statusEl.textContent = 'Innlogging feilet: ' + err.message;
+      loggFeil('getRedirectResult: ' + err.message, 'auth', '');
+    });
+
+    // Lytt på endringer i auth-tilstand. Fyrer både ved oppstart (med eventuell cached bruker)
+    // og hver gang noen logger inn/ut.
+    firebase.auth().onAuthStateChanged(function(user) {
+      bruker = user;
+      if (user) {
+        // Innlogget - skjul login-skjerm, oppdater profil-sirkel, last app-data
+        skjulLoginSkjerm();
+        tegnProfilSirkel();
+      } else {
+        // Ikke innlogget - vis login-skjerm
+        visLoginSkjerm();
+      }
+    });
+  }
+
+  function signInMedGoogle() {
+    if (!firebase.auth) {
+      loggFeil('signIn: firebase.auth ikke tilgjengelig', 'auth', '');
+      return;
+    }
+    var provider = new firebase.auth.GoogleAuthProvider();
+    // Bruker redirect istedenfor popup - mer pålitelig i PWA-kontekst på iOS Safari
+    firebase.auth().signInWithRedirect(provider).catch(function(err) {
+      var statusEl = document.getElementById('login-status');
+      if (statusEl) statusEl.textContent = 'Kunne ikke starte innlogging: ' + err.message;
+      loggFeil('signInWithRedirect: ' + err.message, 'auth', '');
+    });
+  }
+
+  function loggUt() {
+    if (!firebase.auth) return;
+    firebase.auth().signOut().catch(function(err) {
+      loggFeil('Logg ut feilet: ' + err.message, 'auth', '');
+    });
+    // onAuthStateChanged tar seg av UI-oppdatering
+    lukkProfilDropdown();
+  }
+
+  function visLoginSkjerm() {
+    var overlay = document.getElementById('login-overlay');
+    if (overlay) overlay.classList.add('synlig');
+    // Skjul også appens hovedinnhold så ingenting lekker bak login-overlayet
+    var forside = document.getElementById('forside-container');
+    var liste   = document.getElementById('liste-container');
+    if (forside) forside.style.display = 'none';
+    if (liste)   liste.style.display = 'none';
+    var tilbakeknapp = document.getElementById('tilbakemelding-knapp');
+    if (tilbakeknapp) tilbakeknapp.style.display = 'none';
+  }
+
+  function skjulLoginSkjerm() {
+    var overlay = document.getElementById('login-overlay');
+    if (overlay) overlay.classList.remove('synlig');
+    // Vis forsiden - tegnForside ble allerede kalt ved oppstart, men container var skjult
+    var forside = document.getElementById('forside-container');
+    if (forside && !aktivListeId) forside.style.display = 'block';
+    var tilbakeknapp = document.getElementById('tilbakemelding-knapp');
+    if (tilbakeknapp) tilbakeknapp.style.display = 'flex';
+  }
+
+  function tegnProfilSirkel() {
+    if (!bruker) return;
+    var sirkel = document.getElementById('profil-sirkel');
+    if (!sirkel) return;
+    var displayName = bruker.displayName || bruker.email || '?';
+    // Beregn initialer fra første og siste navn
+    var navnDeler = displayName.trim().split(/\s+/);
+    var initialer = (navnDeler[0][0] || '?');
+    if (navnDeler.length > 1) {
+      initialer += navnDeler[navnDeler.length - 1][0];
+    }
+    initialer = initialer.toUpperCase();
+    if (bruker.photoURL) {
+      sirkel.style.backgroundImage = "url('" + bruker.photoURL + "')";
+      sirkel.textContent = '';
+    } else {
+      sirkel.style.backgroundImage = '';
+      sirkel.textContent = initialer;
+    }
+    // Oppdater også dropdown-info
+    var navnEl = document.getElementById('profil-navn');
+    var emailEl = document.getElementById('profil-email');
+    if (navnEl)  navnEl.textContent  = displayName;
+    if (emailEl) emailEl.textContent = bruker.email || '';
+  }
+
+  function toggleProfilDropdown() {
+    var dd = document.getElementById('profil-dropdown');
+    if (dd) dd.classList.toggle('synlig');
+  }
+
+  function lukkProfilDropdown() {
+    var dd = document.getElementById('profil-dropdown');
+    if (dd) dd.classList.remove('synlig');
+  }
+
+  // Lukk profil-dropdown når man klikker utenfor
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#profil-sirkel') && !e.target.closest('#profil-dropdown')) {
+      lukkProfilDropdown();
+    }
+  });
+
+  // ==============================
   // OPPSTART
   // ==============================
   migrerFiskFraKjott();
@@ -2381,12 +2505,13 @@
   lastInnEgneKategorier();
   lastInnLister();
 
-  // Vis forside
+  // Tegn forside (synlig DOM bygges, men container vises kun etter at auth er bekreftet)
   tegnForside();
 
   oppdaterTeller();
   oppdaterKategoriSynlighet();
   initFirebase();
+  initAuth();
 
 // ============================================================
 // Service worker-registrering

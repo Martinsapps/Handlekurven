@@ -500,6 +500,75 @@
     .feil-tid { font-size: 10px; color: #666; margin-bottom: 4px; }
     .feillogg-tom { font-size: 13px; color: #4caf50; text-align: center; padding: 8px 0; }
 
+    /* LOGIN-OVERLAY (full-skjerm før innlogging) */
+    .login-overlay {
+      display: none; position: fixed; inset: 0;
+      background: linear-gradient(180deg, #eef9f3 0%, #d4edda 100%);
+      z-index: 20000;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    .login-overlay.synlig { display: flex; }
+    .login-boks {
+      background: var(--surface); border-radius: 28px;
+      padding: 36px 30px; width: 100%; max-width: 380px;
+      text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+    }
+    .login-logo { font-size: 64px; line-height: 1; margin-bottom: 12px; }
+    .login-tittel { font-size: 26px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .login-undertittel { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+    .login-google-knapp {
+      display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+      width: 100%; padding: 12px 18px;
+      background: white; color: #3c4043;
+      border: 1px solid #dadce0; border-radius: 24px;
+      font-size: 15px; font-weight: 500; cursor: pointer;
+      transition: box-shadow 0.15s, background 0.15s;
+    }
+    .login-google-knapp:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.15); background: #f7f8f8; }
+    .login-google-knapp:active { background: #eef0f1; }
+    .login-google-knapp svg { flex-shrink: 0; }
+    .login-status { margin-top: 14px; font-size: 13px; color: var(--red); min-height: 16px; }
+
+    @media (prefers-color-scheme: dark) {
+      .login-overlay { background: linear-gradient(180deg, #1a2e22 0%, #102018 100%); }
+      .login-google-knapp { background: #fff; color: #3c4043; }
+    }
+
+    /* PROFIL-SIRKEL (kun på forsiden) */
+    .forside-header { position: relative; }
+    .profil-sirkel {
+      position: absolute; top: 0; right: 0;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--green); color: white;
+      border: 2px solid var(--surface);
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background-size: cover; background-position: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+      flex-shrink: 0;
+    }
+    .profil-sirkel:hover { transform: scale(1.05); }
+    .profil-dropdown {
+      display: none;
+      position: absolute; top: 50px; right: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 8px;
+      min-width: 220px; z-index: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    .profil-dropdown.synlig { display: block; }
+    .profil-info { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+    .profil-navn { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .profil-email { font-size: 12px; color: var(--muted); word-break: break-all; }
+    .profil-handling {
+      display: block; width: 100%; text-align: left;
+      padding: 9px 12px; background: none; border: none;
+      border-radius: 10px; font-size: 14px; color: var(--text);
+      cursor: pointer;
+    }
+    .profil-handling:hover { background: var(--bg); }
+
     /* TILBAKEMELDING – flytende knapp og modal */
     .tilbakemelding-knapp {
       position: fixed; bottom: 20px; left: 20px;
