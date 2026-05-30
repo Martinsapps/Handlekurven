@@ -1117,7 +1117,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v13-auth';
+  var APP_VERSJON = 'matplan-v14-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2414,11 +2414,24 @@
       return;
     }
     var provider = new firebase.auth.GoogleAuthProvider();
-    // Bruker redirect istedenfor popup - mer pålitelig i PWA-kontekst på iOS Safari
-    firebase.auth().signInWithRedirect(provider).catch(function(err) {
+    // Bruker popup som primær metode - mer pålitelig på cross-domain GitHub Pages.
+    // Faller tilbake til redirect hvis popup blokkeres (typisk i iOS Safari standalone PWA).
+    firebase.auth().signInWithPopup(provider).catch(function(err) {
+      // Popup-spesifikke feilkoder → prøv redirect
+      if (err.code === 'auth/popup-blocked' ||
+          err.code === 'auth/popup-closed-by-user' ||
+          err.code === 'auth/cancelled-popup-request' ||
+          err.code === 'auth/operation-not-supported-in-this-environment') {
+        firebase.auth().signInWithRedirect(provider).catch(function(redirectErr) {
+          var statusEl = document.getElementById('login-status');
+          if (statusEl) statusEl.textContent = 'Innlogging feilet: ' + redirectErr.message;
+          loggFeil('signInWithRedirect fallback: ' + redirectErr.message, 'auth', '');
+        });
+        return;
+      }
       var statusEl = document.getElementById('login-status');
-      if (statusEl) statusEl.textContent = 'Kunne ikke starte innlogging: ' + err.message;
-      loggFeil('signInWithRedirect: ' + err.message, 'auth', '');
+      if (statusEl) statusEl.textContent = 'Innlogging feilet: ' + err.message;
+      loggFeil('signInWithPopup: ' + err.message, 'auth', '');
     });
   }
 
