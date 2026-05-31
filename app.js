@@ -2305,7 +2305,7 @@
     try {
       var app = firebase.initializeApp({
         apiKey: "AIzaSyAc9X6ovcPQKnZyO_cTGIDVKNLvdYMx8PQ",
-        authDomain: "matplan-42a33.firebaseapp.com",
+        authDomain: "matplan-42a33.web.app",
         databaseURL: "https://matplan-42a33-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "matplan-42a33",
         storageBucket: "matplan-42a33.firebasestorage.app",
