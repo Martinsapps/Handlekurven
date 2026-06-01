@@ -1226,7 +1226,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v21-auth';
+  var APP_VERSJON = 'matplan-v22-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2595,17 +2595,20 @@
   function opprettNyHusstand(navn) {
     if (!database || !bruker || !navn) return Promise.reject(new Error('Mangler info'));
     var nyId = 'h-' + Date.now();
+    var kode = genererKode();
     var data = {
       navn: navn,
       opprettetAv: bruker.uid,
       opprettet: Date.now(),
-      medlemmer: {}
+      medlemmer: {},
+      kode: kode
     };
     data.medlemmer[bruker.uid] = true;
-    // Skriv husstanden + legg til i brukerens husstander-liste
+    // Skriv husstanden + legg til i brukerens husstander-liste + registrer kode
     return Promise.all([
       database.ref('husstander/' + nyId).set(data),
-      database.ref(brukerSti('husstander/' + nyId)).set(true)
+      database.ref(brukerSti('husstander/' + nyId)).set(true),
+      database.ref('invitasjonskoder/' + kode).set({ husstandId: nyId })
     ]).then(function() { return nyId; });
   }
 
@@ -2615,22 +2618,20 @@
   function forlatHusstand(husstandId, somSiste) {
     if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
     if (somSiste) {
-      // Siste medlem: marker husstanden som tom (med tidsstempel), generer
-      // gjenopprettingskode med 4-ukers utløp, og fjern brukerens medlemskap.
-      // Husstanden + alle lister bevares i 4 uker. Ingen lytter på det da.
-      var kode = genererKode();
+      // Siste medlem: marker husstanden som tom og fjern medlemskap.
+      // Husstanden + alle lister bevares i 4 uker. Husstandens permanente
+      // kode brukes som gjenopprettingskode (er allerede lagret i husstanden,
+      // genereres ved opprettelse via opprettNyHusstand eller ved første kall
+      // av genererInvitasjonskode for eldre husstander).
       var nu = Date.now();
-      return Promise.all([
-        database.ref('invitasjonskoder/' + kode).set({
-          husstandId: husstandId,
-          utløper: nu + FIRE_UKER_MS,
-          opprettetAv: bruker.uid,
-          erGjenopprettingsKode: true
-        }),
-        database.ref('husstander/' + husstandId + '/tomtSiden').set(nu),
-        database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).remove(),
-        database.ref(brukerSti('husstander/' + husstandId)).remove()
-      ]).then(function() { return kode; });
+      // Først: sørg for at husstanden HAR en kode (bakoverkompatibilitet)
+      return genererInvitasjonskode(husstandId).then(function(kode) {
+        return Promise.all([
+          database.ref('husstander/' + husstandId + '/tomtSiden').set(nu),
+          database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).remove(),
+          database.ref(brukerSti('husstander/' + husstandId)).remove()
+        ]).then(function() { return kode; });
+      });
     }
     // Normalt: bare fjern medlemskap. Husstand + data forblir for andre medlemmer.
     return Promise.all([
@@ -2641,12 +2642,18 @@
 
   function genererInvitasjonskode(husstandId) {
     if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
-    var kode = genererKode();
-    return database.ref('invitasjonskoder/' + kode).set({
-      husstandId: husstandId,
-      utløper: Date.now() + (24 * 60 * 60 * 1000), // 24 timer
-      opprettetAv: bruker.uid
-    }).then(function() { return kode; });
+    // Returner husstandens permanente kode. Hvis husstanden ble opprettet før vi
+    // begynte å lagre 'kode' på husstand-objektet, generer og lagre én nå
+    // (bakoverkompatibilitet) - så vil samme kode vises ved alle senere kall.
+    return database.ref('husstander/' + husstandId + '/kode').once('value').then(function(snap) {
+      var eksisterende = snap.val();
+      if (eksisterende) return eksisterende;
+      var nyKode = genererKode();
+      return Promise.all([
+        database.ref('husstander/' + husstandId + '/kode').set(nyKode),
+        database.ref('invitasjonskoder/' + nyKode).set({ husstandId: husstandId })
+      ]).then(function() { return nyKode; });
+    });
   }
 
   function bliMedIHusstand(kode) {
@@ -2654,20 +2661,23 @@
     return database.ref('invitasjonskoder/' + kode).once('value').then(function(snap) {
       var data = snap.val();
       if (!data) throw new Error('Ugyldig kode');
-      if (data.utløper < Date.now()) throw new Error('Koden har utløpt');
       var husstandId = data.husstandId;
-      // Sjekk at husstanden faktisk eksisterer (kan være slettet manuelt)
+      // Sjekk at husstanden eksisterer
       return database.ref('husstander/' + husstandId).once('value').then(function(hsnap) {
         if (!hsnap.exists()) throw new Error('Husstanden finnes ikke lenger');
+        var husstand = hsnap.val();
+        // Hvis husstanden har vært tom i mer enn 4 uker, er den utløpt
+        if (husstand.tomtSiden && (husstand.tomtSiden + FIRE_UKER_MS) < Date.now()) {
+          throw new Error('Husstanden er utløpt (over 4 uker uten medlemmer)');
+        }
         // Legg bruker som medlem, registrer husstanden hos bruker, og rydd
         // tomtSiden hvis det var en gjenopprettingsfrist på gang.
+        // NB: Koden består - den er permanent for denne husstanden.
         return Promise.all([
           database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).set(true),
           database.ref(brukerSti('husstander/' + husstandId)).set(true),
           database.ref('husstander/' + husstandId + '/tomtSiden').remove()
         ]);
-      }).then(function() {
-        return database.ref('invitasjonskoder/' + kode).remove();
       }).then(function() { return husstandId; });
     });
   }
@@ -2786,7 +2796,7 @@
       visBekreft(
         'Du er det siste medlemmet i «' + husstandNavn + '». ' +
         'Hvis du forlater, bevares husstanden i 4 uker så du kan komme tilbake. ' +
-        'Du får en gjenopprettingskode du må lagre nå. ' +
+        'Husstandens permanente invitasjonskode vises - lagre den nå. ' +
         'Etter 4 uker slettes alt permanent. Vil du fortsette?',
         function() {
           forlatHusstand(husstandId, true).then(function(kode) {
