@@ -942,6 +942,15 @@
     }
     .liste-kort-slett:hover { color: var(--red); background: var(--red-lt); }
 
+    .forside-seksjon { margin-bottom: 28px; }
+    .forside-seksjon-tittel {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 10px; padding: 0 4px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .forside-seksjon-tittel .ikon { font-size: 14px; }
+
     .ny-liste-knapp {
       display: flex; align-items: center; justify-content: center; gap: 10px;
       width: 100%; padding: 14px; margin-top: 4px;

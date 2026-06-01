@@ -58,6 +58,9 @@
   // ==============================
   var alleLister = [];       // [{id, navn, opprettet}, ...]
   var aktivListeId = null;
+  // Kontekst for aktiv liste: 'personlig' for personlige lister, eller husstandId
+  // for husstand-lister. Brukes av kontekstSti() til å bygge riktig Firebase-path.
+  var aktivListeKontekst = null;
 
   var listeIkoner = {
     standard: '🛒'
@@ -86,78 +89,150 @@
     }
   }
 
-  function lagreLister() {
-    localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
-    if (database && bruker) {
-      database.ref(brukerSti('lister-meta')).set(alleLister).catch(function(err) {
-        loggFeil('Lagre lister feil: ' + err.message, 'firebase', '');
-      });
-    }
+  // Hjelpefunksjon: strip kontekst-feltet før vi skriver til Firebase
+  // (kontekst er klient-side info, ikke noe Firebase trenger å lagre).
+  function utenKontekst(liste) {
+    var k = Object.assign({}, liste);
+    delete k.kontekst;
+    return k;
   }
 
-  function tegnForside() {
-    var grid = document.getElementById('liste-grid');
-    grid.innerHTML = '';
-    if (alleLister.length === 0) {
-      grid.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:14px;padding:20px 0;">Ingen lister ennå. Opprett en ny!</p>';
-      return;
-    }
-    alleLister.forEach(function(liste) {
-      var div = document.createElement('div');
-      div.className = 'liste-kort';
-      // Tell varer i listen
-      var data = localStorage.getItem('matplan-varer-' + liste.id);
-      var antallVarer = 0;
-      var antallGjenstår = 0;
-      if (data) {
-        try {
-          var parsed = JSON.parse(data);
-          var kats = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
-          kats.forEach(function(k) {
-            if (parsed[k]) {
-              antallVarer += parsed[k].length;
-              antallGjenstår += parsed[k].filter(function(v) { return !v.huket; }).length;
-            }
-          });
-        } catch(e) {}
+  function lagreLister() {
+    localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
+    if (!database || !bruker) return;
+    // Splitt alleLister etter kontekst og skriv hver gruppe til riktig path
+    var personlig = [];
+    var perHusstand = {};
+    alleLister.forEach(function(l) {
+      var k = l.kontekst || 'personlig';
+      if (k === 'personlig') {
+        personlig.push(utenKontekst(l));
+      } else {
+        if (!perHusstand[k]) perHusstand[k] = [];
+        perHusstand[k].push(utenKontekst(l));
       }
-      var typeInfo = listeTypeInfo(liste.type || 'mat');
-      div.innerHTML =
-        '<div class="liste-kort-ikon" style="background:' + typeInfo.bg + '">' + typeInfo.ikon + '</div>' +
-        '<div class="liste-kort-info">' +
-          '<div class="liste-kort-navn">' + liste.navn + '</div>' +
-          '<div class="liste-kort-meta">' +
-            typeInfo.navn + (antallVarer > 0 ? ' · ' + antallGjenstår + ' gjenstår' : ' · Tom') +
-          '</div>' +
-        '</div>' +
-        '<span class="liste-kort-pil">›</span>';
-
-      div.addEventListener('click', function() {
-        åpneListe(liste.id);
+    });
+    database.ref(brukerSti('lister-meta')).set(personlig).catch(function(err) {
+      loggFeil('Lagre personlige lister: ' + err.message, 'firebase', '');
+    });
+    Object.keys(perHusstand).forEach(function(hid) {
+      database.ref('husstander/' + hid + '/lister-meta').set(perHusstand[hid]).catch(function(err) {
+        loggFeil('Lagre husstand-lister: ' + err.message, 'firebase', '');
       });
-
-      // Long press to rename
-      var pressTimer;
-      div.addEventListener('touchstart', function(e) {
-        pressTimer = setTimeout(function() {
-          åpneRedigerListeModal(liste.id, liste.navn);
-        }, 600);
-      });
-      div.addEventListener('touchend', function() { clearTimeout(pressTimer); });
-      div.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
-
-      // Right-click / long click on desktop
-      div.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        åpneRedigerListeModal(liste.id, liste.navn);
-      });
-
-      grid.appendChild(div);
     });
   }
 
-  function åpneNyListeModal() {
-    document.getElementById('modal-tittel').textContent = 'Ny liste';
+  // Bygger ett listekort. Trekker ut den tidligere innebygde card-byggeren
+  // som en separat funksjon så vi kan kalle den fra ulike seksjoner.
+  function byggListekortDOM(liste) {
+    var div = document.createElement('div');
+    div.className = 'liste-kort';
+    // Tell varer i listen
+    var data = localStorage.getItem('matplan-varer-' + liste.id);
+    var antallVarer = 0;
+    var antallGjenstår = 0;
+    if (data) {
+      try {
+        var parsed = JSON.parse(data);
+        var kats = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
+        kats.forEach(function(k) {
+          if (parsed[k]) {
+            antallVarer += parsed[k].length;
+            antallGjenstår += parsed[k].filter(function(v) { return !v.huket; }).length;
+          }
+        });
+      } catch(e) {}
+    }
+    var typeInfo = listeTypeInfo(liste.type || 'mat');
+    div.innerHTML =
+      '<div class="liste-kort-ikon" style="background:' + typeInfo.bg + '">' + typeInfo.ikon + '</div>' +
+      '<div class="liste-kort-info">' +
+        '<div class="liste-kort-navn">' + liste.navn + '</div>' +
+        '<div class="liste-kort-meta">' +
+          typeInfo.navn + (antallVarer > 0 ? ' · ' + antallGjenstår + ' gjenstår' : ' · Tom') +
+        '</div>' +
+      '</div>' +
+      '<span class="liste-kort-pil">›</span>';
+
+    div.addEventListener('click', function() { åpneListe(liste.id); });
+
+    // Long press / right-click → rediger
+    var pressTimer;
+    div.addEventListener('touchstart', function(e) {
+      pressTimer = setTimeout(function() {
+        åpneRedigerListeModal(liste.id, liste.navn);
+      }, 600);
+    });
+    div.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+    div.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
+    div.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      åpneRedigerListeModal(liste.id, liste.navn);
+    });
+
+    return div;
+  }
+
+  // Bygger en hel forside-seksjon (tittel + liste-grid + opprett-knapp).
+  function byggForsideSeksjon(tittel, ikon, kontekst, lister) {
+    var seksjon = document.createElement('div');
+    seksjon.className = 'forside-seksjon';
+    var tittelEl = document.createElement('div');
+    tittelEl.className = 'forside-seksjon-tittel';
+    tittelEl.innerHTML = '<span class="ikon">' + ikon + '</span><span>' + tittel + '</span>';
+    seksjon.appendChild(tittelEl);
+
+    var grid = document.createElement('div');
+    grid.className = 'liste-grid';
+    if (lister.length === 0) {
+      var tom = document.createElement('p');
+      tom.style.cssText = 'text-align:center;color:var(--muted);font-size:13px;padding:14px 0;';
+      tom.textContent = 'Ingen lister her ennå.';
+      grid.appendChild(tom);
+    } else {
+      lister.forEach(function(l) { grid.appendChild(byggListekortDOM(l)); });
+    }
+    seksjon.appendChild(grid);
+
+    var nyKnapp = document.createElement('button');
+    nyKnapp.className = 'ny-liste-knapp';
+    nyKnapp.innerHTML = '<span style="font-size:20px;line-height:1">+</span> Ny liste';
+    nyKnapp.addEventListener('click', function() { åpneNyListeModal(kontekst); });
+    seksjon.appendChild(nyKnapp);
+    return seksjon;
+  }
+
+  function tegnForside() {
+    var container = document.getElementById('forside-seksjoner');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Personlig seksjon - alltid synlig
+    var personlige = alleLister.filter(function(l) { return (l.kontekst || 'personlig') === 'personlig'; });
+    container.appendChild(byggForsideSeksjon('Personlig', '👤', 'personlig', personlige));
+
+    // Én seksjon per husstand brukeren er medlem av
+    mineHusstander.forEach(function(h) {
+      var husstandsLister = alleLister.filter(function(l) { return l.kontekst === h.id; });
+      container.appendChild(byggForsideSeksjon(h.navn, '🏠', h.id, husstandsLister));
+    });
+  }
+
+  // Kontekst for liste som skal opprettes (settes når brukeren klikker
+  // en bestemt seksjons "+ Ny liste"-knapp).
+  var nyListeKontekst = 'personlig';
+
+  function åpneNyListeModal(kontekst) {
+    nyListeKontekst = kontekst || 'personlig';
+    // Vis husstand-navnet i modal-tittelen så brukeren vet hvor listen havner
+    var tittelTekst = 'Ny liste';
+    if (nyListeKontekst !== 'personlig') {
+      var h = mineHusstander.find(function(x) { return x.id === nyListeKontekst; });
+      if (h) tittelTekst = 'Ny liste i ' + h.navn;
+    } else {
+      tittelTekst = 'Ny personlig liste';
+    }
+    document.getElementById('modal-tittel').textContent = tittelTekst;
     document.getElementById('modal-lagre-knapp').textContent = 'Opprett';
     document.getElementById('ny-liste-navn').value = '';
     document.getElementById('listetype-felt').style.display = 'block';
@@ -218,7 +293,13 @@
     var valgtType = document.querySelector('.listetype-boks.valgt');
     var type = valgtType ? valgtType.dataset.type : 'mat';
     var nyId = 'liste-' + Date.now();
-    alleLister.push({ id: nyId, navn: navn, type: type, opprettet: Date.now() });
+    alleLister.push({
+      id: nyId,
+      navn: navn,
+      type: type,
+      opprettet: Date.now(),
+      kontekst: nyListeKontekst
+    });
     lagreLister();
     lukkNyListeModal();
     tegnForside();
@@ -249,12 +330,13 @@
   function slettListe(id) {
     var liste = alleLister.find(function(l) { return l.id === id; });
     if (!liste) return;
+    var kontekst = liste.kontekst || 'personlig';
     visBekreft('Slette «' + liste.navn + '»? Alle varer i listen forsvinner.', function() {
       alleLister = alleLister.filter(function(l) { return l.id !== id; });
       localStorage.removeItem('matplan-varer-' + id);
       localStorage.removeItem('matplan-basis-' + id);
       lagreLister();
-      if (database && bruker) database.ref(brukerSti('lister/' + id)).remove();
+      if (database && bruker) database.ref(kontekstSti(kontekst, 'lister/' + id)).remove();
       tegnForside();
     });
   }
@@ -263,6 +345,7 @@
     var liste = alleLister.find(function(l) { return l.id === id; });
     if (!liste) return;
     aktivListeId = id;
+    aktivListeKontekst = liste.kontekst || 'personlig';
 
     // Vis liste-container, skjul forside
     document.getElementById('forside-container').style.display = 'none';
@@ -281,10 +364,13 @@
     // Lagre og detach Firebase listener
     lagreAlt();
     if (aktivFirebaseLytter) {
-      if (database && bruker) database.ref(brukerSti('lister/' + aktivListeId + '/varer')).off('value', aktivFirebaseLytter);
+      if (database && bruker && aktivListeId) {
+        database.ref(kontekstSti(aktivListeKontekst, 'lister/' + aktivListeId + '/varer')).off('value', aktivFirebaseLytter);
+      }
       aktivFirebaseLytter = null;
     }
     aktivListeId = null;
+    aktivListeKontekst = null;
     document.getElementById('liste-container').style.display = 'none';
     document.getElementById('forside-container').style.display = 'block';
     tegnForside();
@@ -322,7 +408,7 @@
   function lyttPåListe(id) {
     if (!database || !bruker) return;
     if (aktivFirebaseLytter) {
-      database.ref(brukerSti('lister/' + (aktivListeId || id) + '/varer')).off('value', aktivFirebaseLytter);
+      database.ref(kontekstSti(aktivListeKontekst, 'lister/' + (aktivListeId || id) + '/varer')).off('value', aktivFirebaseLytter);
     }
     aktivFirebaseLytter = function(snap) {
       // snap.val() er null når listen er helt tom (Firebase pruner tomme verdier).
@@ -334,8 +420,8 @@
         localStorage.setItem('matplan-varer-' + id, JSON.stringify(data));
       }
     };
-    database.ref(brukerSti('lister/' + id + '/varer')).on('value', aktivFirebaseLytter);
-    database.ref(brukerSti('lister/' + id + '/basis')).on('value', function(snap) {
+    database.ref(kontekstSti(aktivListeKontekst, 'lister/' + id + '/varer')).on('value', aktivFirebaseLytter);
+    database.ref(kontekstSti(aktivListeKontekst, 'lister/' + id + '/basis')).on('value', function(snap) {
       // Samme null-håndtering for basis: en tom basisliste kommer som null fra Firebase.
       var data = snap.val();
       if (offlineKø.filter(function(e) { return e.type === 'basisliste'; }).length === 0) {
@@ -1117,7 +1203,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v17-auth';
+  var APP_VERSJON = 'matplan-v18-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2243,14 +2329,14 @@
     var kø = offlineKø.slice();
     kø.forEach(function(entry) {
       if (entry.type === 'handleliste') {
-        database.ref(brukerSti('lister/' + (aktivListeId || 'default') + '/varer')).set(entry.data).then(function() {
+        database.ref(kontekstSti(aktivListeKontekst, 'lister/' + (aktivListeId || 'default') + '/varer')).set(entry.data).then(function() {
           offlineKø = offlineKø.filter(function(e) { return e.type !== 'handleliste'; });
           lagreOfflineKø();
           oppdaterSyncStatus();
         }).catch(function(err) { loggFeil('Sync feilet: ' + err.message, 'firebase', ''); });
       }
       if (entry.type === 'basisliste') {
-        database.ref(brukerSti('lister/' + (aktivListeId || 'default') + '/basis')).set(entry.data).then(function() {
+        database.ref(kontekstSti(aktivListeKontekst, 'lister/' + (aktivListeId || 'default') + '/basis')).set(entry.data).then(function() {
           offlineKø = offlineKø.filter(function(e) { return e.type !== 'basisliste'; });
           lagreOfflineKø();
           oppdaterSyncStatus();
@@ -2287,11 +2373,11 @@
     localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
 
     if (erKoblet && database && bruker) {
-      database.ref(brukerSti('lister/' + aktivListeId + '/varer')).set(data).catch(function(err) {
+      database.ref(kontekstSti(aktivListeKontekst, 'lister/' + aktivListeId + '/varer')).set(data).catch(function(err) {
         leggTilOfflineKø('handleliste', data);
         loggFeil('Firebase lagringsfeil: ' + err.message, 'firebase', '');
       });
-      database.ref(brukerSti('lister/' + aktivListeId + '/basis')).set(basisVarer).catch(function(err) {
+      database.ref(kontekstSti(aktivListeKontekst, 'lister/' + aktivListeId + '/basis')).set(basisVarer).catch(function(err) {
         leggTilOfflineKø('basisliste', basisVarer);
         loggFeil('Firebase basisliste-feil: ' + err.message, 'firebase', '');
       });
@@ -2335,25 +2421,30 @@
   // Setter opp Firebase-listenere på bruker-scoped paths. Kalles én gang
   // etter at bruker er bekreftet innlogget via onAuthStateChanged.
   var brukerListenereAktive = false;
+
+  // Tar lister-meta-data fra en gitt kontekst (personlig eller husstand-id) og
+  // oppdaterer alleLister: fjerner gamle entries fra den kontekst, legger til de nye.
+  function oppdaterListerForKontekst(kontekst, nyeData) {
+    var nyeLister = [];
+    if (Array.isArray(nyeData)) nyeLister = nyeData;
+    else if (nyeData && typeof nyeData === 'object') nyeLister = Object.keys(nyeData).map(function(k) { return nyeData[k]; });
+    // Filtrer ut eksisterende entries fra denne konteksten, legg deretter til nye
+    alleLister = alleLister.filter(function(l) { return (l.kontekst || 'personlig') !== kontekst; });
+    nyeLister.forEach(function(l) {
+      alleLister.push(Object.assign({}, l, { kontekst: kontekst }));
+    });
+    localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
+    tegnForside();
+  }
+
   function aktiverDataListenereForBruker() {
     if (!database || !bruker || brukerListenereAktive) return;
     brukerListenereAktive = true;
 
-    // Lytt på sky-endringer for lister-meta. Firebase er sannhetskilden – hvis en
-    // liste er slettet på en enhet og borte fra Firebase, skal den også forsvinne
-    // lokalt.
+    // Lytt på brukerens personlige lister-meta
     database.ref(brukerSti('lister-meta')).on('value', function(snap) {
       if (offlineKø.length > 0) return;
-      var data = snap.val();
-      var nye;
-      if (Array.isArray(data)) nye = data;
-      else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
-      else nye = [];
-      if (JSON.stringify(alleLister) !== JSON.stringify(nye)) {
-        alleLister = nye;
-        localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
-        tegnForside();
-      }
+      oppdaterListerForKontekst('personlig', snap.val());
     });
 
     // Lytt på egne kategorier (synker mellom enheter)
@@ -2392,6 +2483,16 @@
     return 'brukere/' + bruker.uid + (sub ? '/' + sub : '');
   }
 
+  // Returnerer Firebase-sti for en gitt liste-kontekst (personlig eller husstand).
+  // kontekst === 'personlig' → brukerSti(sub)
+  // kontekst === husstandId  → 'husstander/{hid}/' + sub
+  function kontekstSti(kontekst, sub) {
+    if (!kontekst || kontekst === 'personlig') {
+      return brukerSti(sub);
+    }
+    return 'husstander/' + kontekst + (sub ? '/' + sub : '');
+  }
+
   // E-post på brukeren hvis eksisterende globale data skal migreres til kontoen.
   // Engangsoperasjon - sjekkes ved hver login, men gjør ingenting hvis data er
   // allerede migrert. Trygt å fjerne etter at migrasjonen er bekreftet ferdig.
@@ -2408,17 +2509,33 @@
     return ('' + Math.floor(100000 + Math.random() * 900000));
   }
 
-  // Lytt på brukerens husstand-medlemskap. Henter detaljer for hver husstand.
+  // Holder rede på hvilke husstander vi har lytter på, så vi kan detache når brukeren forlater
+  var husstandListenereAktive = {}; // { husstandId: true }
+
+  // Lytt på brukerens husstand-medlemskap. Henter detaljer for hver husstand
+  // og setter opp lister-meta-lyttere per husstand.
   function aktiverHusstandListener() {
     if (!database || !bruker) return;
     database.ref(brukerSti('husstander')).on('value', function(snap) {
       var husstandIder = snap.val() || {};
       var ider = Object.keys(husstandIder);
+
+      // Detach lyttere for husstander brukeren ikke lenger er med i
+      Object.keys(husstandListenereAktive).forEach(function(hid) {
+        if (!husstandIder[hid]) {
+          database.ref('husstander/' + hid + '/lister-meta').off();
+          delete husstandListenereAktive[hid];
+          // Fjern husstandens lister fra alleLister
+          oppdaterListerForKontekst(hid, null);
+        }
+      });
+
       if (ider.length === 0) {
         mineHusstander = [];
         tegnProfilDropdown();
         return;
       }
+
       // Last hver husstand sine detaljer
       Promise.all(ider.map(function(id) {
         return database.ref('husstander/' + id).once('value').then(function(s) {
@@ -2428,6 +2545,17 @@
       })).then(function(resultater) {
         mineHusstander = resultater.filter(function(h) { return h !== null; });
         tegnProfilDropdown();
+
+        // Sett opp lytter på hver husstands lister-meta (hvis ikke allerede aktiv)
+        mineHusstander.forEach(function(h) {
+          if (!husstandListenereAktive[h.id]) {
+            husstandListenereAktive[h.id] = true;
+            database.ref('husstander/' + h.id + '/lister-meta').on('value', function(s2) {
+              if (offlineKø.length > 0) return;
+              oppdaterListerForKontekst(h.id, s2.val());
+            });
+          }
+        });
       });
     });
   }
