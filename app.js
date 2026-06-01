@@ -1117,7 +1117,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v15-auth';
+  var APP_VERSJON = 'matplan-v16-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2397,6 +2397,208 @@
   // allerede migrert. Trygt å fjerne etter at migrasjonen er bekreftet ferdig.
   var MIGRASJON_TARGET_EMAIL = 'mnygaard1995@gmail.com';
 
+  // ==============================
+  // HUSSTAND (delt mellom medlemmer)
+  // ==============================
+  // Liste over husstander brukeren er medlem av: [{id, navn, medlemmer:{}, opprettetAv}, ...]
+  var mineHusstander = [];
+
+  // Genererer en 6-sifret invitasjonskode (000000-999999)
+  function genererKode() {
+    return ('' + Math.floor(100000 + Math.random() * 900000));
+  }
+
+  // Lytt på brukerens husstand-medlemskap. Henter detaljer for hver husstand.
+  function aktiverHusstandListener() {
+    if (!database || !bruker) return;
+    database.ref(brukerSti('husstander')).on('value', function(snap) {
+      var husstandIder = snap.val() || {};
+      var ider = Object.keys(husstandIder);
+      if (ider.length === 0) {
+        mineHusstander = [];
+        tegnProfilDropdown();
+        return;
+      }
+      // Last hver husstand sine detaljer
+      Promise.all(ider.map(function(id) {
+        return database.ref('husstander/' + id).once('value').then(function(s) {
+          var data = s.val();
+          return data ? Object.assign({ id: id }, data) : null;
+        });
+      })).then(function(resultater) {
+        mineHusstander = resultater.filter(function(h) { return h !== null; });
+        tegnProfilDropdown();
+      });
+    });
+  }
+
+  function opprettNyHusstand(navn) {
+    if (!database || !bruker || !navn) return Promise.reject(new Error('Mangler info'));
+    var nyId = 'h-' + Date.now();
+    var data = {
+      navn: navn,
+      opprettetAv: bruker.uid,
+      opprettet: Date.now(),
+      medlemmer: {}
+    };
+    data.medlemmer[bruker.uid] = true;
+    // Skriv husstanden + legg til i brukerens husstander-liste
+    return Promise.all([
+      database.ref('husstander/' + nyId).set(data),
+      database.ref(brukerSti('husstander/' + nyId)).set(true)
+    ]).then(function() { return nyId; });
+  }
+
+  function forlatHusstand(husstandId) {
+    if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
+    // Fjern medlemskap fra husstanden og fra brukerens husstander-liste
+    return Promise.all([
+      database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).remove(),
+      database.ref(brukerSti('husstander/' + husstandId)).remove()
+    ]);
+  }
+
+  function genererInvitasjonskode(husstandId) {
+    if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
+    var kode = genererKode();
+    return database.ref('invitasjonskoder/' + kode).set({
+      husstandId: husstandId,
+      utløper: Date.now() + (24 * 60 * 60 * 1000), // 24 timer
+      opprettetAv: bruker.uid
+    }).then(function() { return kode; });
+  }
+
+  function bliMedIHusstand(kode) {
+    if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
+    return database.ref('invitasjonskoder/' + kode).once('value').then(function(snap) {
+      var data = snap.val();
+      if (!data) throw new Error('Ugyldig kode');
+      if (data.utløper < Date.now()) throw new Error('Koden har utløpt');
+      var husstandId = data.husstandId;
+      // Legg bruker som medlem av husstanden, og registrer husstanden hos bruker
+      return Promise.all([
+        database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).set(true),
+        database.ref(brukerSti('husstander/' + husstandId)).set(true)
+      ]).then(function() {
+        // Slett koden så den ikke kan brukes igjen
+        return database.ref('invitasjonskoder/' + kode).remove();
+      }).then(function() { return husstandId; });
+    });
+  }
+
+  // ==============================
+  // UI for husstand-handlinger
+  // ==============================
+  function tegnProfilDropdown() {
+    var container = document.getElementById('profil-husstander');
+    if (!container) return;
+    container.innerHTML = '';
+    if (mineHusstander.length === 0) {
+      // Ingen husstand - vis opprett/bli med-knapper
+      container.innerHTML =
+        '<div class="profil-husstand-tittel">Du er ikke i en husstand</div>' +
+        '<button class="profil-handling" onclick="åpneOpprettHusstand()">🏠 Opprett husstand</button>' +
+        '<button class="profil-handling" onclick="åpneBliMedHusstand()">🔑 Bli med i husstand</button>';
+    } else {
+      // Vis liste over husstander + opprett-knapper for flere
+      container.innerHTML = '<div class="profil-husstand-tittel">Husstander</div>';
+      mineHusstander.forEach(function(h) {
+        var rad = document.createElement('div');
+        rad.className = 'profil-husstand-rad';
+        var antall = Object.keys(h.medlemmer || {}).length;
+        rad.innerHTML =
+          '<span class="ikon">🏠</span>' +
+          '<span class="navn">' + h.navn + ' <span style="color:var(--muted);font-weight:normal">(' + antall + ')</span></span>' +
+          '<button class="handling" title="Vis invitasjonskode" onclick="visInvitasjonskode(\'' + h.id + '\')">📋</button>' +
+          '<button class="handling" title="Forlat husstand" onclick="bekreftForlatHusstand(\'' + h.id + '\',\'' + h.navn.replace(/'/g, "\\'") + '\')">×</button>';
+        container.appendChild(rad);
+      });
+      var ekstra = document.createElement('div');
+      ekstra.innerHTML =
+        '<button class="profil-handling" onclick="åpneOpprettHusstand()">🏠 Opprett ny husstand</button>' +
+        '<button class="profil-handling" onclick="åpneBliMedHusstand()">🔑 Bli med i annen husstand</button>';
+      container.appendChild(ekstra);
+    }
+  }
+
+  function åpneOpprettHusstand() {
+    lukkProfilDropdown();
+    document.getElementById('ny-husstand-navn').value = '';
+    document.getElementById('opprett-husstand-overlay').classList.add('synlig');
+    setTimeout(function() { document.getElementById('ny-husstand-navn').focus(); }, 100);
+  }
+  function lukkOpprettHusstand() {
+    document.getElementById('opprett-husstand-overlay').classList.remove('synlig');
+  }
+  function bekreftOpprettHusstand() {
+    var navn = document.getElementById('ny-husstand-navn').value.trim();
+    if (!navn) {
+      var inp = document.getElementById('ny-husstand-navn');
+      inp.style.borderColor = 'var(--red)';
+      inp.focus();
+      setTimeout(function() { inp.style.borderColor = ''; }, 1500);
+      return;
+    }
+    opprettNyHusstand(navn).then(function() {
+      lukkOpprettHusstand();
+    }).catch(function(err) {
+      loggFeil('Opprett husstand: ' + err.message, 'husstand', '');
+    });
+  }
+
+  function åpneBliMedHusstand() {
+    lukkProfilDropdown();
+    document.getElementById('kode-input').value = '';
+    document.getElementById('kode-feilmelding').textContent = '';
+    document.getElementById('bli-med-husstand-overlay').classList.add('synlig');
+    setTimeout(function() { document.getElementById('kode-input').focus(); }, 100);
+  }
+  function lukkBliMedHusstand() {
+    document.getElementById('bli-med-husstand-overlay').classList.remove('synlig');
+  }
+  function bekreftBliMedHusstand() {
+    var kode = document.getElementById('kode-input').value.trim();
+    var feilEl = document.getElementById('kode-feilmelding');
+    if (!/^\d{6}$/.test(kode)) {
+      feilEl.textContent = 'Koden må være 6 sifre.';
+      return;
+    }
+    feilEl.textContent = '';
+    bliMedIHusstand(kode).then(function() {
+      lukkBliMedHusstand();
+    }).catch(function(err) {
+      feilEl.textContent = err.message;
+    });
+  }
+
+  function visInvitasjonskode(husstandId) {
+    lukkProfilDropdown();
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    var navnEl = document.getElementById('invitasjonskode-husstand');
+    if (navnEl) navnEl.textContent = 'Til: ' + (husstand ? husstand.navn : '...');
+    var kodeEl = document.getElementById('invitasjonskode-vis');
+    if (kodeEl) kodeEl.textContent = 'Genererer…';
+    document.getElementById('invitasjonskode-overlay').classList.add('synlig');
+    genererInvitasjonskode(husstandId).then(function(kode) {
+      if (kodeEl) kodeEl.textContent = kode;
+    }).catch(function(err) {
+      if (kodeEl) kodeEl.textContent = 'Feilet';
+      loggFeil('Generer kode: ' + err.message, 'husstand', '');
+    });
+  }
+  function lukkInvitasjonskode() {
+    document.getElementById('invitasjonskode-overlay').classList.remove('synlig');
+  }
+
+  function bekreftForlatHusstand(husstandId, husstandNavn) {
+    lukkProfilDropdown();
+    visBekreft('Forlate husstand «' + husstandNavn + '»? Du vil ikke lenger ha tilgang til delte lister i denne husstanden.', function() {
+      forlatHusstand(husstandId).catch(function(err) {
+        loggFeil('Forlat husstand: ' + err.message, 'husstand', '');
+      });
+    });
+  }
+
   function migrerGlobaltTilBrukerOmNodvendig() {
     if (!bruker || !database) return Promise.resolve();
     if (bruker.email !== MIGRASJON_TARGET_EMAIL) {
@@ -2463,10 +2665,11 @@
         // deretter aktiver Firebase-listenere som lytter på brukerens path.
         migrerGlobaltTilBrukerOmNodvendig().then(function() {
           aktiverDataListenereForBruker();
+          aktiverHusstandListener();
         }).catch(function(err) {
           loggFeil('Migrasjon/aktivering feilet: ' + err.message, 'auth', '');
-          // Prøv å aktivere listenere uansett
           aktiverDataListenereForBruker();
+          aktiverHusstandListener();
         });
       } else {
         // Ikke innlogget - vis login-skjerm og rens lokale brukerdata
@@ -2476,6 +2679,7 @@
         alleLister = [];
         egneKategorier = [];
         basisVarer = [];
+        mineHusstander = [];
         // localStorage holder cache - tømmes nå så ny bruker får friskt grunnlag
         localStorage.removeItem('matplan-lister');
         localStorage.removeItem('matplan-egne-kategorier');

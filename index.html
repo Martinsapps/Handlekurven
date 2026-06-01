@@ -140,6 +140,10 @@
           <div class="profil-navn" id="profil-navn">—</div>
           <div class="profil-email" id="profil-email">—</div>
         </div>
+        <div class="profil-husstander" id="profil-husstander">
+          <!-- Bygges dynamisk: liste over husstander brukeren er medlem av,
+               eller "Opprett/Bli med"-knapper hvis ingen -->
+        </div>
         <button class="profil-handling" onclick="loggUt()">🚪 Logg ut</button>
       </div>
       <h1>🛒 Mine lister</h1>
@@ -374,6 +378,50 @@
   </div>
   <div id="feillogg-innhold">
     <p class="feillogg-tom">Ingen feil registrert ✓</p>
+  </div>
+</div>
+
+<!-- HUSSTAND-MODALER -->
+<div class="husstand-overlay" id="opprett-husstand-overlay">
+  <div class="husstand-modal">
+    <h2>🏠 Opprett ny husstand</h2>
+    <p class="husstand-intro">Gi husstanden et navn (f.eks. familienavn eller adresse). Andre kan bli med ved å skrive inn invitasjonskoden din.</p>
+    <div class="husstand-felt">
+      <label>Husstandsnavn</label>
+      <input type="text" id="ny-husstand-navn" placeholder="f.eks. Familien Nygaard" maxlength="50">
+    </div>
+    <div class="husstand-knapper">
+      <button class="husstand-avbryt" onclick="lukkOpprettHusstand()">Avbryt</button>
+      <button class="husstand-bekreft" onclick="bekreftOpprettHusstand()">Opprett</button>
+    </div>
+  </div>
+</div>
+
+<div class="husstand-overlay" id="bli-med-husstand-overlay">
+  <div class="husstand-modal">
+    <h2>🔑 Bli med i husstand</h2>
+    <p class="husstand-intro">Be om en invitasjonskode fra noen som allerede er i husstanden, og skriv den inn under.</p>
+    <div class="husstand-felt">
+      <label>Invitasjonskode</label>
+      <input type="text" id="kode-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="off">
+    </div>
+    <p class="husstand-feilmelding" id="kode-feilmelding"></p>
+    <div class="husstand-knapper">
+      <button class="husstand-avbryt" onclick="lukkBliMedHusstand()">Avbryt</button>
+      <button class="husstand-bekreft" onclick="bekreftBliMedHusstand()">Bli med</button>
+    </div>
+  </div>
+</div>
+
+<div class="husstand-overlay" id="invitasjonskode-overlay">
+  <div class="husstand-modal">
+    <h2>📋 Invitasjonskode</h2>
+    <p class="husstand-intro">Del denne koden med familien. Den er gyldig i 24 timer.</p>
+    <div class="invitasjonskode-vis" id="invitasjonskode-vis">000000</div>
+    <p class="invitasjonskode-husstand" id="invitasjonskode-husstand">Til: …</p>
+    <div class="husstand-knapper">
+      <button class="husstand-bekreft" onclick="lukkInvitasjonskode()" style="margin-left:auto">Ferdig</button>
+    </div>
   </div>
 </div>
 
