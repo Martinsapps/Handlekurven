@@ -376,6 +376,10 @@
     var typeInfo = listeTypeInfo(liste.type || 'mat');
     document.getElementById('aktiv-liste-tittel').textContent = typeInfo.ikon + ' ' + liste.navn;
 
+    // Bytt til riktig sett av egne kategorier for denne konteksten
+    // (personlige for personlige lister, husstandens for husstand-lister)
+    bytteEgneKategorierKontekst(aktivListeKontekst);
+
     // Last inn data for denne listen
     lastInnListeData(id);
 
@@ -515,7 +519,12 @@
     { bg: '#e0e0e0', tekst: '#444' }
   ];
   var valgtFargeIndeks = 0;
+  // egneKategorier er den AKTIVE listen som vises i sidebar og brukes i UI.
+  // egneKategorierByKontekst holder rede på alle kontekstenes data slik at
+  // vi kan bytte raskt mellom personlige lister og husstand-lister uten å
+  // miste data eller måtte vente på Firebase.
   var egneKategorier = [];
+  var egneKategorierByKontekst = { 'personlig': [] };
 
   function byggFargeVelger() {
     var container = document.getElementById('farge-velger');
@@ -620,9 +629,14 @@
   }
 
   function lagreEgneKategorier() {
-    localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
+    // Lagre i den konteksten brukeren er aktiv i. Hvis ingen liste er åpen
+    // (aktivListeKontekst er null), defaulter vi til 'personlig' siden det
+    // ikke gir mening å lagre i en husstand-kontekst uten å være i en husstand-liste.
+    var kontekst = aktivListeKontekst || 'personlig';
+    egneKategorierByKontekst[kontekst] = egneKategorier;
+    localStorage.setItem('matplan-egne-kategorier-' + kontekst, JSON.stringify(egneKategorier));
     if (typeof database !== 'undefined' && database && erKoblet && bruker) {
-      database.ref(brukerSti('egne-kategorier')).set(egneKategorier).catch(function(err) {
+      database.ref(kontekstSti(kontekst, 'egne-kategorier')).set(egneKategorier).catch(function(err) {
         loggFeil('Lagre egne kategorier: ' + err.message, 'firebase', '');
       });
     }
@@ -649,13 +663,57 @@
     });
     oppdaterKategoriVelgere();
     tegnEgneKategorierSidebar();
-    localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
+    // Cache per kontekst i localStorage (rask oppstart neste gang denne konteksten åpnes)
+    var k = aktivListeKontekst || 'personlig';
+    localStorage.setItem('matplan-egne-kategorier-' + k, JSON.stringify(egneKategorier));
+  }
+
+  // Oppdaterer cached data for en gitt kontekst. Hvis konteksten er den som vises
+  // nå (basert på aktivListeKontekst), rebygger vi også DOM.
+  function setEgneKategorierForKontekst(kontekst, raaData) {
+    var nye = [];
+    if (Array.isArray(raaData)) nye = raaData;
+    else if (raaData && typeof raaData === 'object') nye = Object.keys(raaData).map(function(k) { return raaData[k]; });
+    egneKategorierByKontekst[kontekst] = nye;
+    localStorage.setItem('matplan-egne-kategorier-' + kontekst, JSON.stringify(nye));
+    // Hvis dette er konteksten brukeren ser akkurat nå, oppdater DOM
+    var aktiv = aktivListeKontekst || 'personlig';
+    if (kontekst === aktiv) {
+      if (JSON.stringify(egneKategorier) !== JSON.stringify(nye)) {
+        rebuildEgneKategorierFraData(nye);
+      }
+    }
+  }
+
+  // Bytter visning til en bestemt kontekst (kalt fra åpneListe).
+  function bytteEgneKategorierKontekst(kontekst) {
+    var data = egneKategorierByKontekst[kontekst];
+    if (data === undefined) {
+      // Last fra localStorage hvis tilgjengelig
+      var cache = localStorage.getItem('matplan-egne-kategorier-' + kontekst);
+      data = cache ? JSON.parse(cache) : [];
+      egneKategorierByKontekst[kontekst] = data;
+    }
+    rebuildEgneKategorierFraData(data);
   }
 
   function lastInnEgneKategorier() {
-    var lagret = localStorage.getItem('matplan-egne-kategorier');
+    // Last inn personlig kontekst først (default). Husstand-kategorier lastes
+    // når brukeren åpner en husstand-liste (via bytteEgneKategorierKontekst).
+    // Bakoverkompatibilitet: gammel localStorage-nøkkel 'matplan-egne-kategorier'
+    // (uten kontekst-suffix) migreres til personlig hvis ny nøkkel mangler.
+    var nyKey = 'matplan-egne-kategorier-personlig';
+    var lagret = localStorage.getItem(nyKey);
+    if (!lagret) {
+      var gammel = localStorage.getItem('matplan-egne-kategorier');
+      if (gammel) {
+        lagret = gammel;
+        localStorage.setItem(nyKey, gammel);
+      }
+    }
     if (lagret) {
       egneKategorier = JSON.parse(lagret);
+      egneKategorierByKontekst['personlig'] = egneKategorier;
       egneKategorier.forEach(function(k) {
         byggEgenKategoriDOM(k.id, k.navn, k.farge);
       });
@@ -1226,7 +1284,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v22-auth';
+  var APP_VERSJON = 'matplan-v23-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2393,7 +2451,8 @@
     // Alltid lagre lokalt først (per liste)
     localStorage.setItem('matplan-varer-' + aktivListeId, JSON.stringify(data));
     localStorage.setItem('matplan-basis-' + aktivListeId, JSON.stringify(basisVarer));
-    localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
+    // egneKategorier lagres til kontekst-spesifikk localStorage-nøkkel via
+    // lagreEgneKategorier(). lagreAlt skriver derfor ikke dette her lenger.
 
     if (erKoblet && database && bruker) {
       database.ref(kontekstSti(aktivListeKontekst, 'lister/' + aktivListeId + '/varer')).set(data).catch(function(err) {
@@ -2470,26 +2529,11 @@
       oppdaterListerForKontekst('personlig', snap.val());
     });
 
-    // Lytt på egne kategorier (synker mellom enheter)
+    // Lytt på brukerens personlige egne kategorier
     database.ref(brukerSti('egne-kategorier')).on('value', function(snap) {
       if (ignorerEgneKategorierEko) { ignorerEgneKategorierEko = false; return; }
-      var data = snap.val();
-      var nye = [];
-      if (Array.isArray(data)) nye = data;
-      else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
-      if (JSON.stringify(egneKategorier) !== JSON.stringify(nye)) {
-        rebuildEgneKategorierFraData(nye);
-      }
+      setEgneKategorierForKontekst('personlig', snap.val());
     });
-
-    // Hvis vi har lokale egne kategorier som ikke er i sky enda, last dem opp
-    if (egneKategorier.length > 0) {
-      database.ref(brukerSti('egne-kategorier')).once('value', function(snap) {
-        if (!snap.val()) {
-          database.ref(brukerSti('egne-kategorier')).set(egneKategorier);
-        }
-      });
-    }
   }
 
   // ==============================
@@ -2553,7 +2597,10 @@
       Object.keys(husstandListenereAktive).forEach(function(hid) {
         if (!husstandIder[hid]) {
           database.ref('husstander/' + hid + '/lister-meta').off();
+          database.ref('husstander/' + hid + '/egne-kategorier').off();
           delete husstandListenereAktive[hid];
+          delete egneKategorierByKontekst[hid];
+          localStorage.removeItem('matplan-egne-kategorier-' + hid);
           oppdaterListerForKontekst(hid, null);
         }
       });
@@ -2578,13 +2625,16 @@
         tegnProfilDropdown();
         tegnForside();
 
-        // Sett opp lytter på hver husstands lister-meta (hvis ikke allerede aktiv)
+        // Sett opp lyttere på hver husstands lister-meta + egne-kategorier
         mineHusstander.forEach(function(h) {
           if (!husstandListenereAktive[h.id]) {
             husstandListenereAktive[h.id] = true;
             database.ref('husstander/' + h.id + '/lister-meta').on('value', function(s2) {
               if (offlineKø.length > 0) return;
               oppdaterListerForKontekst(h.id, s2.val());
+            });
+            database.ref('husstander/' + h.id + '/egne-kategorier').on('value', function(s2) {
+              setEgneKategorierForKontekst(h.id, s2.val());
             });
           }
         });
@@ -2931,11 +2981,19 @@
         // Tøm in-memory brukerdata så neste bruker ikke ser forrige sine lister
         alleLister = [];
         egneKategorier = [];
+        egneKategorierByKontekst = { 'personlig': [] };
         basisVarer = [];
         mineHusstander = [];
         // localStorage holder cache - tømmes nå så ny bruker får friskt grunnlag
         localStorage.removeItem('matplan-lister');
         localStorage.removeItem('matplan-egne-kategorier');
+        // Rens også per-kontekst-cache for egne kategorier
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var key = localStorage.key(i);
+          if (key && key.indexOf('matplan-egne-kategorier-') === 0) {
+            localStorage.removeItem(key);
+          }
+        }
       }
     });
   }
