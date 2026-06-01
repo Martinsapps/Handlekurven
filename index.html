@@ -158,7 +158,8 @@
 <!-- BEKREFTELSE-OVERLAY -->
 <div class="bekreft-overlay" id="bekreft-overlay">
   <div class="bekreft-boks">
-    <div id="bekreft-tekst"></div>
+    <button class="modal-lukk-x" onclick="lukkBekreft()" title="Lukk">×</button>
+    <div id="bekreft-tekst" style="padding-right:36px"></div>
     <div class="bekreft-knapper">
       <button class="bekreft-nei" onclick="lukkBekreft()">Avbryt</button>
       <button class="bekreft-ja" id="bekreft-ja">Ja, slett</button>
@@ -169,6 +170,7 @@
 <!-- NY LISTE MODAL -->
 <div class="modal-overlay" id="ny-liste-modal">
   <div class="modal">
+    <button class="modal-lukk-x" onclick="lukkNyListeModal()" title="Lukk">×</button>
     <h2 id="modal-tittel">Ny liste</h2>
     <div class="modal-felt">
       <div class="modal-etikett">Navn</div>
@@ -383,6 +385,7 @@
 <!-- HUSSTAND-MODALER -->
 <div class="husstand-overlay" id="opprett-husstand-overlay">
   <div class="husstand-modal">
+    <button class="modal-lukk-x" onclick="lukkOpprettHusstand()" title="Lukk">×</button>
     <h2>🏠 Opprett ny husstand</h2>
     <p class="husstand-intro">Gi husstanden et navn (f.eks. familienavn eller adresse). Andre kan bli med ved å skrive inn invitasjonskoden din.</p>
     <div class="husstand-felt">
@@ -398,6 +401,7 @@
 
 <div class="husstand-overlay" id="bli-med-husstand-overlay">
   <div class="husstand-modal">
+    <button class="modal-lukk-x" onclick="lukkBliMedHusstand()" title="Lukk">×</button>
     <h2>🔑 Bli med i husstand</h2>
     <p class="husstand-intro">Be om en invitasjonskode fra noen som allerede er i husstanden, og skriv den inn under.</p>
     <div class="husstand-felt">
@@ -414,6 +418,7 @@
 
 <div class="husstand-overlay" id="gjenoppretting-overlay">
   <div class="husstand-modal">
+    <button class="modal-lukk-x" onclick="lukkGjenopprettingsModal()" title="Lukk">×</button>
     <h2>⚠ Husstand bevares i 4 uker</h2>
     <p class="husstand-intro">
       <strong id="gjenoppretting-husstand-navn">…</strong> har ingen aktive medlemmer.
@@ -435,6 +440,7 @@
 
 <div class="husstand-overlay" id="invitasjonskode-overlay">
   <div class="husstand-modal">
+    <button class="modal-lukk-x" onclick="lukkInvitasjonskode()" title="Lukk">×</button>
     <h2>📋 Invitasjonskode</h2>
     <p class="husstand-intro">Del denne koden med familien. Den er gyldig i 24 timer.</p>
     <div class="invitasjonskode-vis" id="invitasjonskode-vis">000000</div>
@@ -448,6 +454,7 @@
 <!-- TILBAKEMELDING MODAL -->
 <div class="tilbakemelding-overlay" id="tilbakemelding-overlay">
   <div class="tilbakemelding-modal">
+    <button class="modal-lukk-x" onclick="lukkTilbakemeldingModal()" title="Lukk">×</button>
     <h2>💬 Send tilbakemelding</h2>
     <p class="tilbakemelding-intro">Hjelp oss å forbedre Handlekurven – fortell hva du har opplevd, ønsker eller lurer på.</p>
 

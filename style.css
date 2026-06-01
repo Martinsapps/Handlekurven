@@ -635,6 +635,24 @@
     .husstand-bekreft:hover { background: var(--green-dk); }
     .husstand-bekreft:disabled { background: var(--border); color: var(--muted); cursor: default; }
 
+    /* Felles X-knapp øverst til høyre i modaler */
+    .modal-lukk-x {
+      position: absolute; top: 12px; right: 12px;
+      width: 32px; height: 32px;
+      border: none; background: var(--bg); color: var(--muted);
+      border-radius: 50%; cursor: pointer;
+      font-size: 20px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .modal-lukk-x:hover { color: var(--text); background: var(--border); }
+    .husstand-modal, .modal, .tilbakemelding-modal, .bekreft-boks {
+      position: relative;
+    }
+    .husstand-modal h2, .modal h2, .tilbakemelding-modal h2 {
+      padding-right: 36px;
+    }
+
     .gjenoppretting-advarsel {
       background: var(--red-lt); color: var(--red);
       border: 1px solid var(--red-bd);
