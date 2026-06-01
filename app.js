@@ -88,8 +88,8 @@
 
   function lagreLister() {
     localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
-    if (database) {
-      database.ref('lister-meta').set(alleLister).catch(function(err) {
+    if (database && bruker) {
+      database.ref(brukerSti('lister-meta')).set(alleLister).catch(function(err) {
         loggFeil('Lagre lister feil: ' + err.message, 'firebase', '');
       });
     }
@@ -254,7 +254,7 @@
       localStorage.removeItem('matplan-varer-' + id);
       localStorage.removeItem('matplan-basis-' + id);
       lagreLister();
-      if (database) database.ref('lister/' + id).remove();
+      if (database && bruker) database.ref(brukerSti('lister/' + id)).remove();
       tegnForside();
     });
   }
@@ -281,7 +281,7 @@
     // Lagre og detach Firebase listener
     lagreAlt();
     if (aktivFirebaseLytter) {
-      database && database.ref('lister/' + aktivListeId + '/varer').off('value', aktivFirebaseLytter);
+      if (database && bruker) database.ref(brukerSti('lister/' + aktivListeId + '/varer')).off('value', aktivFirebaseLytter);
       aktivFirebaseLytter = null;
     }
     aktivListeId = null;
@@ -320,9 +320,9 @@
   }
 
   function lyttPåListe(id) {
-    if (!database) return;
+    if (!database || !bruker) return;
     if (aktivFirebaseLytter) {
-      database.ref('lister/' + (aktivListeId || id) + '/varer').off('value', aktivFirebaseLytter);
+      database.ref(brukerSti('lister/' + (aktivListeId || id) + '/varer')).off('value', aktivFirebaseLytter);
     }
     aktivFirebaseLytter = function(snap) {
       // snap.val() er null når listen er helt tom (Firebase pruner tomme verdier).
@@ -334,8 +334,8 @@
         localStorage.setItem('matplan-varer-' + id, JSON.stringify(data));
       }
     };
-    database.ref('lister/' + id + '/varer').on('value', aktivFirebaseLytter);
-    database.ref('lister/' + id + '/basis').on('value', function(snap) {
+    database.ref(brukerSti('lister/' + id + '/varer')).on('value', aktivFirebaseLytter);
+    database.ref(brukerSti('lister/' + id + '/basis')).on('value', function(snap) {
       // Samme null-håndtering for basis: en tom basisliste kommer som null fra Firebase.
       var data = snap.val();
       if (offlineKø.filter(function(e) { return e.type === 'basisliste'; }).length === 0) {
@@ -512,8 +512,8 @@
 
   function lagreEgneKategorier() {
     localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
-    if (typeof database !== 'undefined' && database && erKoblet) {
-      database.ref('egne-kategorier').set(egneKategorier).catch(function(err) {
+    if (typeof database !== 'undefined' && database && erKoblet && bruker) {
+      database.ref(brukerSti('egne-kategorier')).set(egneKategorier).catch(function(err) {
         loggFeil('Lagre egne kategorier: ' + err.message, 'firebase', '');
       });
     }
@@ -1117,7 +1117,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v14-auth';
+  var APP_VERSJON = 'matplan-v15-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2239,18 +2239,18 @@
   }
 
   function syncOfflineKø() {
-    if (!database || !erKoblet || offlineKø.length === 0) return;
+    if (!database || !erKoblet || offlineKø.length === 0 || !bruker) return;
     var kø = offlineKø.slice();
     kø.forEach(function(entry) {
       if (entry.type === 'handleliste') {
-        database.ref('lister/' + (aktivListeId || 'default') + '/varer').set(entry.data).then(function() {
+        database.ref(brukerSti('lister/' + (aktivListeId || 'default') + '/varer')).set(entry.data).then(function() {
           offlineKø = offlineKø.filter(function(e) { return e.type !== 'handleliste'; });
           lagreOfflineKø();
           oppdaterSyncStatus();
         }).catch(function(err) { loggFeil('Sync feilet: ' + err.message, 'firebase', ''); });
       }
       if (entry.type === 'basisliste') {
-        database.ref('lister/' + (aktivListeId || 'default') + '/basis').set(entry.data).then(function() {
+        database.ref(brukerSti('lister/' + (aktivListeId || 'default') + '/basis')).set(entry.data).then(function() {
           offlineKø = offlineKø.filter(function(e) { return e.type !== 'basisliste'; });
           lagreOfflineKø();
           oppdaterSyncStatus();
@@ -2286,12 +2286,12 @@
     localStorage.setItem('matplan-basis-' + aktivListeId, JSON.stringify(basisVarer));
     localStorage.setItem('matplan-egne-kategorier', JSON.stringify(egneKategorier));
 
-    if (erKoblet && database) {
-      database.ref('lister/' + aktivListeId + '/varer').set(data).catch(function(err) {
+    if (erKoblet && database && bruker) {
+      database.ref(brukerSti('lister/' + aktivListeId + '/varer')).set(data).catch(function(err) {
         leggTilOfflineKø('handleliste', data);
         loggFeil('Firebase lagringsfeil: ' + err.message, 'firebase', '');
       });
-      database.ref('lister/' + aktivListeId + '/basis').set(basisVarer).catch(function(err) {
+      database.ref(brukerSti('lister/' + aktivListeId + '/basis')).set(basisVarer).catch(function(err) {
         leggTilOfflineKø('basisliste', basisVarer);
         loggFeil('Firebase basisliste-feil: ' + err.message, 'firebase', '');
       });
@@ -2325,51 +2325,57 @@
         }
       });
 
-      // Lytt på sky-endringer for lister-meta. Firebase er sannhetskilden – hvis en
-      // liste er slettet på en enhet og borte fra Firebase, skal den også forsvinne
-      // lokalt. Tidligere brukte vi en merge-strategi som beholdt slettede lister
-      // og kunne skrive dem tilbake til Firebase ved neste lagring.
-      database.ref('lister-meta').on('value', function(snap) {
-        // Hvis vi har offline-endringer ventende, ikke overskriv lokal state -
-        // vi venter med sync til offlineKø er tømt for å unngå data-tap.
-        if (offlineKø.length > 0) return;
-        var data = snap.val();
-        var nye;
-        if (Array.isArray(data)) nye = data;
-        else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
-        else nye = [];
-        // Bare oppdater hvis det er en faktisk endring
-        if (JSON.stringify(alleLister) !== JSON.stringify(nye)) {
-          alleLister = nye;
-          localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
-          tegnForside();
-        }
-      });
-
-      // Lytt på egne kategorier (synker mellom enheter)
-      database.ref('egne-kategorier').on('value', function(snap) {
-        if (ignorerEgneKategorierEko) { ignorerEgneKategorierEko = false; return; }
-        var data = snap.val();
-        // Firebase kan returnere array eller objekt - normaliser
-        var nye = [];
-        if (Array.isArray(data)) nye = data;
-        else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
-        // Sjekk om noe faktisk endret seg før vi rebuilder DOM
-        if (JSON.stringify(egneKategorier) !== JSON.stringify(nye)) {
-          rebuildEgneKategorierFraData(nye);
-        }
-      });
-
-      // Hvis vi har lokale egne kategorier som ikke er i sky enda, last dem opp
-      if (egneKategorier.length > 0) {
-        database.ref('egne-kategorier').once('value', function(snap) {
-          if (!snap.val()) {
-            database.ref('egne-kategorier').set(egneKategorier);
-          }
-        });
-      }
+      // Listenere for brukerdata (lister-meta + egne-kategorier) settes opp
+      // i aktiverDataListenereForBruker() når en bruker er innlogget. Vi
+      // trenger brukerens UID for å bygge riktig Firebase-path.
 
     } catch(err) { loggFeil('Firebase init-feil: ' + err.message, 'firebase', ''); visKoblingStatus(false); }
+  }
+
+  // Setter opp Firebase-listenere på bruker-scoped paths. Kalles én gang
+  // etter at bruker er bekreftet innlogget via onAuthStateChanged.
+  var brukerListenereAktive = false;
+  function aktiverDataListenereForBruker() {
+    if (!database || !bruker || brukerListenereAktive) return;
+    brukerListenereAktive = true;
+
+    // Lytt på sky-endringer for lister-meta. Firebase er sannhetskilden – hvis en
+    // liste er slettet på en enhet og borte fra Firebase, skal den også forsvinne
+    // lokalt.
+    database.ref(brukerSti('lister-meta')).on('value', function(snap) {
+      if (offlineKø.length > 0) return;
+      var data = snap.val();
+      var nye;
+      if (Array.isArray(data)) nye = data;
+      else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
+      else nye = [];
+      if (JSON.stringify(alleLister) !== JSON.stringify(nye)) {
+        alleLister = nye;
+        localStorage.setItem('matplan-lister', JSON.stringify(alleLister));
+        tegnForside();
+      }
+    });
+
+    // Lytt på egne kategorier (synker mellom enheter)
+    database.ref(brukerSti('egne-kategorier')).on('value', function(snap) {
+      if (ignorerEgneKategorierEko) { ignorerEgneKategorierEko = false; return; }
+      var data = snap.val();
+      var nye = [];
+      if (Array.isArray(data)) nye = data;
+      else if (data && typeof data === 'object') nye = Object.keys(data).map(function(k) { return data[k]; });
+      if (JSON.stringify(egneKategorier) !== JSON.stringify(nye)) {
+        rebuildEgneKategorierFraData(nye);
+      }
+    });
+
+    // Hvis vi har lokale egne kategorier som ikke er i sky enda, last dem opp
+    if (egneKategorier.length > 0) {
+      database.ref(brukerSti('egne-kategorier')).once('value', function(snap) {
+        if (!snap.val()) {
+          database.ref(brukerSti('egne-kategorier')).set(egneKategorier);
+        }
+      });
+    }
   }
 
   // ==============================
@@ -2377,6 +2383,58 @@
   // ==============================
   // Aktuell innlogget bruker (firebase.User-objekt) - null hvis ikke innlogget
   var bruker = null;
+
+  // Returnerer Firebase-sti for nåværende bruker. Brukes overalt der vi tidligere
+  // skrev til globale paths som 'lister-meta', 'lister/{id}', 'egne-kategorier'.
+  // Eksempel: brukerSti('lister-meta') → 'brukere/abc123/lister-meta'
+  function brukerSti(sub) {
+    if (!bruker || !bruker.uid) return null;
+    return 'brukere/' + bruker.uid + (sub ? '/' + sub : '');
+  }
+
+  // E-post på brukeren hvis eksisterende globale data skal migreres til kontoen.
+  // Engangsoperasjon - sjekkes ved hver login, men gjør ingenting hvis data er
+  // allerede migrert. Trygt å fjerne etter at migrasjonen er bekreftet ferdig.
+  var MIGRASJON_TARGET_EMAIL = 'mnygaard1995@gmail.com';
+
+  function migrerGlobaltTilBrukerOmNodvendig() {
+    if (!bruker || !database) return Promise.resolve();
+    if (bruker.email !== MIGRASJON_TARGET_EMAIL) {
+      // Annen bruker - sørg for at brukernoden eksisterer med basisinfo
+      return database.ref('brukere/' + bruker.uid).once('value').then(function(snap) {
+        if (!snap.exists()) {
+          return database.ref('brukere/' + bruker.uid).set({
+            opprettet: Date.now(),
+            email: bruker.email,
+            navn: bruker.displayName || ''
+          });
+        }
+      });
+    }
+    // Migrasjons-target: sjekk om brukerdata allerede finnes
+    return database.ref('brukere/' + bruker.uid).once('value').then(function(snap) {
+      if (snap.exists() && snap.val()['lister-meta']) {
+        // Allerede migrert eller har data
+        return;
+      }
+      // Les globale data og kopier til brukernoden
+      return Promise.all([
+        database.ref('lister-meta').once('value'),
+        database.ref('lister').once('value'),
+        database.ref('egne-kategorier').once('value')
+      ]).then(function(results) {
+        var nyData = {
+          opprettet: Date.now(),
+          email: bruker.email,
+          navn: bruker.displayName || ''
+        };
+        if (results[0].val()) nyData['lister-meta'] = results[0].val();
+        if (results[1].val()) nyData.lister = results[1].val();
+        if (results[2].val()) nyData['egne-kategorier'] = results[2].val();
+        return database.ref('brukere/' + bruker.uid).set(nyData);
+      });
+    });
+  }
 
   function initAuth() {
     if (typeof firebase === 'undefined' || !firebase.auth) {
@@ -2398,12 +2456,29 @@
     firebase.auth().onAuthStateChanged(function(user) {
       bruker = user;
       if (user) {
-        // Innlogget - skjul login-skjerm, oppdater profil-sirkel, last app-data
+        // Innlogget - skjul login-skjerm, oppdater profil-sirkel, last brukerens data
         skjulLoginSkjerm();
         tegnProfilSirkel();
+        // Migrer eksisterende globale data hvis aktuelt (engangsoperasjon),
+        // deretter aktiver Firebase-listenere som lytter på brukerens path.
+        migrerGlobaltTilBrukerOmNodvendig().then(function() {
+          aktiverDataListenereForBruker();
+        }).catch(function(err) {
+          loggFeil('Migrasjon/aktivering feilet: ' + err.message, 'auth', '');
+          // Prøv å aktivere listenere uansett
+          aktiverDataListenereForBruker();
+        });
       } else {
-        // Ikke innlogget - vis login-skjerm
+        // Ikke innlogget - vis login-skjerm og rens lokale brukerdata
         visLoginSkjerm();
+        brukerListenereAktive = false;
+        // Tøm in-memory brukerdata så neste bruker ikke ser forrige sine lister
+        alleLister = [];
+        egneKategorier = [];
+        basisVarer = [];
+        // localStorage holder cache - tømmes nå så ny bruker får friskt grunnlag
+        localStorage.removeItem('matplan-lister');
+        localStorage.removeItem('matplan-egne-kategorier');
       }
     });
   }
