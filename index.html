@@ -412,6 +412,27 @@
   </div>
 </div>
 
+<div class="husstand-overlay" id="gjenoppretting-overlay">
+  <div class="husstand-modal">
+    <h2>⚠ Husstand bevares i 4 uker</h2>
+    <p class="husstand-intro">
+      <strong id="gjenoppretting-husstand-navn">…</strong> har ingen aktive medlemmer.
+      Husstanden bevares i 4 uker så du kan komme tilbake.
+    </p>
+    <div class="gjenoppretting-advarsel">
+      <strong>VIKTIG:</strong> Lagre koden under <em>nå</em>.
+      Uten den kommer du ikke inn igjen, og husstanden + alle dens lister
+      slettes permanent etter 4 uker.
+    </div>
+    <div class="invitasjonskode-vis" id="gjenoppretting-kode-vis">000000</div>
+    <p class="invitasjonskode-husstand">Gyldig til: <span id="gjenoppretting-utlop">…</span></p>
+    <div class="husstand-knapper">
+      <button class="husstand-avbryt" id="kopier-gjenoppretting" onclick="kopierGjenopprettingsKode()">📋 Kopier kode</button>
+      <button class="husstand-bekreft" onclick="lukkGjenopprettingsModal()">Jeg har lagret koden</button>
+    </div>
+  </div>
+</div>
+
 <div class="husstand-overlay" id="invitasjonskode-overlay">
   <div class="husstand-modal">
     <h2>📋 Invitasjonskode</h2>

@@ -635,6 +635,15 @@
     .husstand-bekreft:hover { background: var(--green-dk); }
     .husstand-bekreft:disabled { background: var(--border); color: var(--muted); cursor: default; }
 
+    .gjenoppretting-advarsel {
+      background: var(--red-lt); color: var(--red);
+      border: 1px solid var(--red-bd);
+      border-radius: 14px; padding: 12px 14px;
+      font-size: 13px; line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .gjenoppretting-advarsel strong { font-weight: 700; }
+
     .invitasjonskode-vis {
       text-align: center; font-size: 36px; font-weight: 700;
       letter-spacing: 0.3em; padding: 20px;
@@ -942,17 +951,33 @@
     }
     .liste-kort-slett:hover { color: var(--red); background: var(--red-lt); }
 
-    .forside-seksjon { margin-bottom: 28px; }
+    .forside-seksjon {
+      margin-bottom: 20px;
+      background: rgba(0,0,0,0.03);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 20px;
+      padding: 12px 14px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .forside-seksjon {
+        background: rgba(255,255,255,0.03);
+        border-color: rgba(255,255,255,0.06);
+      }
+    }
     .forside-seksjon-tittel {
       font-size: 11px; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 10px; padding: 6px 8px;
+      margin-bottom: 12px; padding: 6px 8px;
       display: flex; align-items: center; gap: 8px;
       cursor: pointer; user-select: none;
       border-radius: 12px;
       transition: background 0.15s;
     }
-    .forside-seksjon-tittel:hover { background: var(--bg); }
+    .forside-seksjon.kollapset .forside-seksjon-tittel { margin-bottom: 0; }
+    .forside-seksjon-tittel:hover { background: rgba(0,0,0,0.04); }
+    @media (prefers-color-scheme: dark) {
+      .forside-seksjon-tittel:hover { background: rgba(255,255,255,0.05); }
+    }
     .forside-seksjon-tittel .ikon { font-size: 14px; }
     .forside-seksjon-tittel .navn { flex: 1; }
     .forside-seksjon-tittel .pil {

@@ -1226,7 +1226,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v19-auth';
+  var APP_VERSJON = 'matplan-v20-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2609,14 +2609,28 @@
     ]).then(function() { return nyId; });
   }
 
-  function forlatHusstand(husstandId, slettHusstandHelt) {
+  // Antall millisekunder for 4 ukers angrefrist
+  var FIRE_UKER_MS = 4 * 7 * 24 * 60 * 60 * 1000;
+
+  function forlatHusstand(husstandId, somSiste) {
     if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
-    if (slettHusstandHelt) {
-      // Brukeren var siste medlem - slett hele husstanden med alle dens lister
+    if (somSiste) {
+      // Siste medlem: marker husstanden som tom (med tidsstempel), generer
+      // gjenopprettingskode med 4-ukers utløp, og fjern brukerens medlemskap.
+      // Husstanden + alle lister bevares i 4 uker. Ingen lytter på det da.
+      var kode = genererKode();
+      var nu = Date.now();
       return Promise.all([
-        database.ref('husstander/' + husstandId).remove(),
+        database.ref('invitasjonskoder/' + kode).set({
+          husstandId: husstandId,
+          utløper: nu + FIRE_UKER_MS,
+          opprettetAv: bruker.uid,
+          erGjenopprettingsKode: true
+        }),
+        database.ref('husstander/' + husstandId + '/tomtSiden').set(nu),
+        database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).remove(),
         database.ref(brukerSti('husstander/' + husstandId)).remove()
-      ]);
+      ]).then(function() { return kode; });
     }
     // Normalt: bare fjern medlemskap. Husstand + data forblir for andre medlemmer.
     return Promise.all([
@@ -2642,12 +2656,17 @@
       if (!data) throw new Error('Ugyldig kode');
       if (data.utløper < Date.now()) throw new Error('Koden har utløpt');
       var husstandId = data.husstandId;
-      // Legg bruker som medlem av husstanden, og registrer husstanden hos bruker
-      return Promise.all([
-        database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).set(true),
-        database.ref(brukerSti('husstander/' + husstandId)).set(true)
-      ]).then(function() {
-        // Slett koden så den ikke kan brukes igjen
+      // Sjekk at husstanden faktisk eksisterer (kan være slettet manuelt)
+      return database.ref('husstander/' + husstandId).once('value').then(function(hsnap) {
+        if (!hsnap.exists()) throw new Error('Husstanden finnes ikke lenger');
+        // Legg bruker som medlem, registrer husstanden hos bruker, og rydd
+        // tomtSiden hvis det var en gjenopprettingsfrist på gang.
+        return Promise.all([
+          database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).set(true),
+          database.ref(brukerSti('husstander/' + husstandId)).set(true),
+          database.ref('husstander/' + husstandId + '/tomtSiden').remove()
+        ]);
+      }).then(function() {
         return database.ref('invitasjonskoder/' + kode).remove();
       }).then(function() { return husstandId; });
     });
@@ -2763,14 +2782,17 @@
     var medlemAntall = husstand ? Object.keys(husstand.medlemmer || {}).length : 0;
 
     if (medlemAntall <= 1) {
-      // Brukeren er siste medlem - advarsel om at husstanden + alle lister slettes
+      // Brukeren er siste medlem - bevares i 4 uker med gjenopprettingskode
       visBekreft(
         'Du er det siste medlemmet i «' + husstandNavn + '». ' +
-        'Hvis du forlater nå, slettes husstanden og alle dens lister PERMANENT. ' +
-        'Vil du fortsette?',
+        'Hvis du forlater, bevares husstanden i 4 uker så du kan komme tilbake. ' +
+        'Du får en gjenopprettingskode du må lagre nå. ' +
+        'Etter 4 uker slettes alt permanent. Vil du fortsette?',
         function() {
-          forlatHusstand(husstandId, true).catch(function(err) {
-            loggFeil('Slett husstand: ' + err.message, 'husstand', '');
+          forlatHusstand(husstandId, true).then(function(kode) {
+            visGjenopprettingsKode(kode, husstandNavn);
+          }).catch(function(err) {
+            loggFeil('Forlat (siste): ' + err.message, 'husstand', '');
           });
         }
       );
@@ -2785,6 +2807,38 @@
           });
         }
       );
+    }
+  }
+
+  function visGjenopprettingsKode(kode, husstandNavn) {
+    document.getElementById('gjenoppretting-husstand-navn').textContent = husstandNavn;
+    document.getElementById('gjenoppretting-kode-vis').textContent = kode;
+    var utlop = new Date(Date.now() + FIRE_UKER_MS);
+    document.getElementById('gjenoppretting-utlop').textContent =
+      utlop.toLocaleDateString('no-NO', { day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('gjenoppretting-overlay').classList.add('synlig');
+  }
+  function lukkGjenopprettingsModal() {
+    document.getElementById('gjenoppretting-overlay').classList.remove('synlig');
+  }
+  function kopierGjenopprettingsKode() {
+    var kode = document.getElementById('gjenoppretting-kode-vis').textContent;
+    var knapp = document.getElementById('kopier-gjenoppretting');
+    var visBekreftet = function() {
+      knapp.textContent = '✓ Kopiert';
+      setTimeout(function() { knapp.textContent = '📋 Kopier kode'; }, 2000);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(kode).then(visBekreftet);
+    } else {
+      // Fallback for eldre nettlesere
+      var t = document.createElement('textarea');
+      t.value = kode;
+      document.body.appendChild(t);
+      t.select();
+      try { document.execCommand('copy'); visBekreftet(); }
+      catch (e) { knapp.textContent = 'Kopier feilet'; }
+      document.body.removeChild(t);
     }
   }
 
