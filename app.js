@@ -173,13 +173,36 @@
     return div;
   }
 
+  // Sjekker om en seksjon er kollapset (lagret i localStorage)
+  function erSeksjonKollapset(kontekst) {
+    return localStorage.getItem('matplan-seksjon-kollapset-' + kontekst) === '1';
+  }
+  function settSeksjonKollapset(kontekst, kollapset) {
+    if (kollapset) {
+      localStorage.setItem('matplan-seksjon-kollapset-' + kontekst, '1');
+    } else {
+      localStorage.removeItem('matplan-seksjon-kollapset-' + kontekst);
+    }
+  }
+
   // Bygger en hel forside-seksjon (tittel + liste-grid + opprett-knapp).
   function byggForsideSeksjon(tittel, ikon, kontekst, lister) {
     var seksjon = document.createElement('div');
     seksjon.className = 'forside-seksjon';
+    if (erSeksjonKollapset(kontekst)) seksjon.classList.add('kollapset');
+
     var tittelEl = document.createElement('div');
     tittelEl.className = 'forside-seksjon-tittel';
-    tittelEl.innerHTML = '<span class="ikon">' + ikon + '</span><span>' + tittel + '</span>';
+    tittelEl.innerHTML =
+      '<span class="ikon">' + ikon + '</span>' +
+      '<span class="navn">' + tittel + '</span>' +
+      '<span class="antall">' + lister.length + '</span>' +
+      '<span class="pil">▼</span>';
+    tittelEl.addEventListener('click', function() {
+      var nyTilstand = !seksjon.classList.contains('kollapset');
+      seksjon.classList.toggle('kollapset', nyTilstand);
+      settSeksjonKollapset(kontekst, nyTilstand);
+    });
     seksjon.appendChild(tittelEl);
 
     var grid = document.createElement('div');
@@ -1203,7 +1226,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v18-auth';
+  var APP_VERSJON = 'matplan-v19-auth';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2520,31 +2543,40 @@
       var husstandIder = snap.val() || {};
       var ider = Object.keys(husstandIder);
 
-      // Detach lyttere for husstander brukeren ikke lenger er med i
+      // 1. Oppdater mineHusstander UMIDDELBART for å fjerne husstander brukeren
+      //    ikke lenger er med i (UI oppdateres med en gang).
+      mineHusstander = mineHusstander.filter(function(h) { return husstandIder[h.id]; });
+      tegnProfilDropdown();
+      tegnForside();
+
+      // 2. Detach Firebase-lyttere for husstander brukeren ikke lenger er med i
       Object.keys(husstandListenereAktive).forEach(function(hid) {
         if (!husstandIder[hid]) {
           database.ref('husstander/' + hid + '/lister-meta').off();
           delete husstandListenereAktive[hid];
-          // Fjern husstandens lister fra alleLister
           oppdaterListerForKontekst(hid, null);
         }
       });
 
-      if (ider.length === 0) {
-        mineHusstander = [];
-        tegnProfilDropdown();
-        return;
-      }
+      if (ider.length === 0) return;
 
-      // Last hver husstand sine detaljer
-      Promise.all(ider.map(function(id) {
+      // 3. Last detaljer for husstander vi ikke allerede har i mineHusstander
+      var nyeIder = ider.filter(function(id) {
+        return !mineHusstander.find(function(h) { return h.id === id; });
+      });
+      if (nyeIder.length === 0) return;
+
+      Promise.all(nyeIder.map(function(id) {
         return database.ref('husstander/' + id).once('value').then(function(s) {
           var data = s.val();
           return data ? Object.assign({ id: id }, data) : null;
         });
       })).then(function(resultater) {
-        mineHusstander = resultater.filter(function(h) { return h !== null; });
+        resultater.filter(function(h) { return h !== null; }).forEach(function(h) {
+          mineHusstander.push(h);
+        });
         tegnProfilDropdown();
+        tegnForside();
 
         // Sett opp lytter på hver husstands lister-meta (hvis ikke allerede aktiv)
         mineHusstander.forEach(function(h) {
@@ -2577,9 +2609,16 @@
     ]).then(function() { return nyId; });
   }
 
-  function forlatHusstand(husstandId) {
+  function forlatHusstand(husstandId, slettHusstandHelt) {
     if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
-    // Fjern medlemskap fra husstanden og fra brukerens husstander-liste
+    if (slettHusstandHelt) {
+      // Brukeren var siste medlem - slett hele husstanden med alle dens lister
+      return Promise.all([
+        database.ref('husstander/' + husstandId).remove(),
+        database.ref(brukerSti('husstander/' + husstandId)).remove()
+      ]);
+    }
+    // Normalt: bare fjern medlemskap. Husstand + data forblir for andre medlemmer.
     return Promise.all([
       database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).remove(),
       database.ref(brukerSti('husstander/' + husstandId)).remove()
@@ -2720,11 +2759,33 @@
 
   function bekreftForlatHusstand(husstandId, husstandNavn) {
     lukkProfilDropdown();
-    visBekreft('Forlate husstand «' + husstandNavn + '»? Du vil ikke lenger ha tilgang til delte lister i denne husstanden.', function() {
-      forlatHusstand(husstandId).catch(function(err) {
-        loggFeil('Forlat husstand: ' + err.message, 'husstand', '');
-      });
-    });
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    var medlemAntall = husstand ? Object.keys(husstand.medlemmer || {}).length : 0;
+
+    if (medlemAntall <= 1) {
+      // Brukeren er siste medlem - advarsel om at husstanden + alle lister slettes
+      visBekreft(
+        'Du er det siste medlemmet i «' + husstandNavn + '». ' +
+        'Hvis du forlater nå, slettes husstanden og alle dens lister PERMANENT. ' +
+        'Vil du fortsette?',
+        function() {
+          forlatHusstand(husstandId, true).catch(function(err) {
+            loggFeil('Slett husstand: ' + err.message, 'husstand', '');
+          });
+        }
+      );
+    } else {
+      visBekreft(
+        'Forlate husstand «' + husstandNavn + '»? ' +
+        'Du vil ikke lenger ha tilgang til delte lister i denne husstanden. ' +
+        '(' + (medlemAntall - 1) + ' andre medlem(mer) beholder tilgangen.)',
+        function() {
+          forlatHusstand(husstandId, false).catch(function(err) {
+            loggFeil('Forlat husstand: ' + err.message, 'husstand', '');
+          });
+        }
+      );
+    }
   }
 
   function migrerGlobaltTilBrukerOmNodvendig() {
