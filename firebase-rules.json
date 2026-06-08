@@ -1,0 +1,41 @@
+{
+  "rules": {
+    "brukere": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "husstander": {
+      "$hid": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('medlemmer').child(auth.uid).val() === true) || data.child('medlemmer').child(auth.uid).val() === true)",
+
+        "medlemmer": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        },
+
+        "tomtSiden": {
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "invitasjonskoder": {
+      "$kode": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+
+    "tilbakemeldinger": {
+      "$id": {
+        ".read": false,
+        ".write": "auth != null && !data.exists()"
+      }
+    }
+  }
+}
