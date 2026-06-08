@@ -446,8 +446,10 @@
     <div class="invitasjonskode-vis" id="invitasjonskode-vis">000000</div>
     <p class="invitasjonskode-husstand" id="invitasjonskode-husstand">Til: …</p>
     <div class="husstand-knapper">
+      <button class="husstand-avbryt" id="invitasjonskode-bytt-knapp" onclick="bekreftBytteInvitasjonskode()" style="display:none">🔄 Bytt kode</button>
       <button class="husstand-bekreft" onclick="lukkInvitasjonskode()" style="margin-left:auto">Ferdig</button>
     </div>
+    <p class="invitasjonskode-eier-info" id="invitasjonskode-eier-info" style="display:none;font-size:12px;color:var(--muted);margin-top:8px">Som oppretter av husstanden kan du bytte kode hvis du mistenker at den er lekket. Den gamle koden blir straks ugyldig.</p>
   </div>
 </div>
 

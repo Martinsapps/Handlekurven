@@ -1284,7 +1284,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v24-favoritter';
+  var APP_VERSJON = 'matplan-v25-bytt-kode';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2817,13 +2817,28 @@
     });
   }
 
+  // Holder hvilken husstand som vises i modalen, slik at bytt-kode-knappen vet
+  // hvilken den jobber mot uten å måtte parses fra DOM.
+  var aktivInvitasjonskodeHusstandId = null;
+
   function visInvitasjonskode(husstandId) {
     lukkProfilDropdown();
+    aktivInvitasjonskodeHusstandId = husstandId;
     var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
     var navnEl = document.getElementById('invitasjonskode-husstand');
     if (navnEl) navnEl.textContent = 'Til: ' + (husstand ? husstand.navn : '...');
     var kodeEl = document.getElementById('invitasjonskode-vis');
     if (kodeEl) kodeEl.textContent = 'Genererer…';
+
+    // Vis "Bytt kode"-knappen kun hvis brukeren er den som opprettet husstanden.
+    // Sikkerhets-poenget: hvis noen lekker en kode, kan kun eieren bytte den
+    // og dermed kaste ut nye uvedkommende.
+    var byttKnapp = document.getElementById('invitasjonskode-bytt-knapp');
+    var eierInfo = document.getElementById('invitasjonskode-eier-info');
+    var erEier = husstand && bruker && husstand.opprettetAv === bruker.uid;
+    if (byttKnapp) byttKnapp.style.display = erEier ? '' : 'none';
+    if (eierInfo) eierInfo.style.display = erEier ? '' : 'none';
+
     document.getElementById('invitasjonskode-overlay').classList.add('synlig');
     genererInvitasjonskode(husstandId).then(function(kode) {
       if (kodeEl) kodeEl.textContent = kode;
@@ -2834,6 +2849,56 @@
   }
   function lukkInvitasjonskode() {
     document.getElementById('invitasjonskode-overlay').classList.remove('synlig');
+    aktivInvitasjonskodeHusstandId = null;
+  }
+
+  // Bekreft før bytte (advarer brukeren om at den gamle koden blir ugyldig).
+  function bekreftBytteInvitasjonskode() {
+    var husstandId = aktivInvitasjonskodeHusstandId;
+    if (!husstandId) return;
+    visBekreft(
+      'Bytte invitasjonskode? Den gamle koden vil ikke lenger fungere, ' +
+      'og du må dele den nye med medlemmer som mangler innlogging.',
+      function() { byttInvitasjonskode(husstandId); }
+    );
+  }
+
+  // Bytt invitasjonskoden for en husstand. Atomisk: gammel kode fjernes fra
+  // invitasjonskoder/, ny kode legges til, og husstand-objektet oppdateres -
+  // alt i én Firebase-update slik at klienter aldri ser en mellomtilstand.
+  function byttInvitasjonskode(husstandId) {
+    if (!database || !bruker) return;
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    if (!husstand) return;
+    // Defensiv sjekk - bør ikke skje fordi knappen kun vises for eieren,
+    // men bedre å feile pent enn å la en ikke-eier prøve.
+    if (husstand.opprettetAv !== bruker.uid) {
+      loggFeil('Bytt kode nektet: ikke eier', 'husstand', '');
+      return;
+    }
+    var kodeEl = document.getElementById('invitasjonskode-vis');
+    if (kodeEl) kodeEl.textContent = 'Bytter…';
+
+    // Hent gammel kode først så vi vet hvilken vi skal slette
+    database.ref('husstander/' + husstandId + '/kode').once('value').then(function(snap) {
+      var gammelKode = snap.val();
+      var nyKode = genererKode();
+      var oppdateringer = {};
+      oppdateringer['husstander/' + husstandId + '/kode'] = nyKode;
+      oppdateringer['invitasjonskoder/' + nyKode] = { husstandId: husstandId };
+      if (gammelKode && gammelKode !== nyKode) {
+        oppdateringer['invitasjonskoder/' + gammelKode] = null;
+      }
+      return database.ref().update(oppdateringer).then(function() { return nyKode; });
+    }).then(function(nyKode) {
+      if (kodeEl) kodeEl.textContent = nyKode;
+      // Oppdater lokal kopi av husstand-objektet så neste visning er korrekt
+      var h = mineHusstander.find(function(x) { return x.id === husstandId; });
+      if (h) h.kode = nyKode;
+    }).catch(function(err) {
+      if (kodeEl) kodeEl.textContent = 'Feilet';
+      loggFeil('Bytt kode: ' + err.message, 'husstand', '');
+    });
   }
 
   function bekreftForlatHusstand(husstandId, husstandNavn) {
