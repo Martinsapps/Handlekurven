@@ -1284,7 +1284,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v26-bekreft-z-index';
+  var APP_VERSJON = 'matplan-v27-bekreft-tekst';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -1426,10 +1426,14 @@
   // ==============================
   // BEKREFTELSEBOKS
   // ==============================
-  function visBekreft(tekst, jaFunksjon) {
+  function visBekreft(tekst, jaFunksjon, jaTekst) {
     document.getElementById('bekreft-tekst').textContent = tekst;
+    var jaKnapp = document.getElementById('bekreft-ja');
+    // jaTekst er valgfri; faller tilbake til "Ja, slett" som er det vanligste
+    // bruksområdet (sletting). Send eksplisitt tekst for andre handlinger.
+    jaKnapp.textContent = jaTekst || 'Ja, slett';
     document.getElementById('bekreft-overlay').classList.add('synlig');
-    document.getElementById('bekreft-ja').onclick = function() { lukkBekreft(); jaFunksjon(); };
+    jaKnapp.onclick = function() { lukkBekreft(); jaFunksjon(); };
   }
   function lukkBekreft() {
     document.getElementById('bekreft-overlay').classList.remove('synlig');
@@ -2859,7 +2863,8 @@
     visBekreft(
       'Bytte invitasjonskode? Den gamle koden vil ikke lenger fungere, ' +
       'og du må dele den nye med medlemmer som mangler innlogging.',
-      function() { byttInvitasjonskode(husstandId); }
+      function() { byttInvitasjonskode(husstandId); },
+      'Ja, bytt'
     );
   }
 
