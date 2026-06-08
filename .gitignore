@@ -5,6 +5,10 @@ Matplan*/
 *.bak
 *.backup
 
+# Personlige notater og støttedokumenter (skal ikke i repoet)
+*.docx
+*.pdf
+
 # OS-genererte filer
 Thumbs.db
 desktop.ini
