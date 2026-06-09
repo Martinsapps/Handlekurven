@@ -127,22 +127,32 @@
   function byggListekortDOM(liste) {
     var div = document.createElement('div');
     div.className = 'liste-kort';
-    // Tell varer i listen
-    var data = localStorage.getItem('matplan-varer-' + liste.id);
+    // Foretrukket: les tellinger fra lister-meta (synkronisert via Firebase
+    // av lagreAlt → oppdaterListekortTelling). Da ser alle medlemmer samme
+    // tall i sanntid uten å måtte åpne listen først.
     var antallVarer = 0;
-    var antallGjenstår = 0;
-    if (data) {
-      try {
-        var parsed = JSON.parse(data);
-        var kats = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
-        kats.forEach(function(k) {
-          if (parsed[k]) {
-            antallVarer += parsed[k].length;
-            antallGjenstår += parsed[k].filter(function(v) { return !v.huket; }).length;
-          }
-        });
-      } catch(e) {}
+    var antallGjenstaar = 0;
+    if (typeof liste.antallVarer === 'number') {
+      antallVarer = liste.antallVarer;
+      antallGjenstaar = typeof liste.antallGjenstaar === 'number' ? liste.antallGjenstaar : 0;
+    } else {
+      // Fallback for gamle lister som ble opprettet før telling lå i meta -
+      // disse blir oppdatert ved første lagreAlt og glir over til Firebase-veien.
+      var data = localStorage.getItem('matplan-varer-' + liste.id);
+      if (data) {
+        try {
+          var parsed = JSON.parse(data);
+          var kats = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
+          kats.forEach(function(k) {
+            if (parsed[k]) {
+              antallVarer += parsed[k].length;
+              antallGjenstaar += parsed[k].filter(function(v) { return !v.huket; }).length;
+            }
+          });
+        } catch(e) {}
+      }
     }
+    var antallGjenstår = antallGjenstaar; // beholder eksisterende variabelnavn i template under
     var typeInfo = listeTypeInfo(liste.type || 'mat');
     div.innerHTML =
       '<div class="liste-kort-ikon" style="background:' + typeInfo.bg + '">' + typeInfo.ikon + '</div>' +
@@ -1284,7 +1294,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v27-bekreft-tekst';
+  var APP_VERSJON = 'matplan-v28-live-telling';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2471,6 +2481,44 @@
       leggTilOfflineKø('handleliste', data);
       leggTilOfflineKø('basisliste', basisVarer);
     }
+
+    // Oppdater lister-meta med ny vare-telling så forsiden hos andre medlemmer
+    // får live oppdatering uten å måtte åpne listen først.
+    oppdaterListekortTelling(data);
+  }
+
+  // Beregner antall varer og antall gjenstående basert på data (resultat av
+  // hentData()). Hvis tallene har endret seg fra forrige lagring, oppdaterer
+  // vi alleLister[idx] og skriver hele lister-meta-arrayet til Firebase.
+  // Andre medlemmer plukker opp endringen via sin lister-meta-listener og
+  // forside-kortet re-rendres med oppdaterte tall.
+  function oppdaterListekortTelling(data) {
+    if (!aktivListeId) return;
+    var idx = -1;
+    for (var i = 0; i < alleLister.length; i++) {
+      if (alleLister[i].id === aktivListeId) { idx = i; break; }
+    }
+    if (idx === -1) return;
+
+    var antallVarer = 0;
+    var antallGjenstaar = 0;
+    Object.keys(data).forEach(function(kat) {
+      if (!Array.isArray(data[kat])) return;
+      data[kat].forEach(function(v) {
+        antallVarer++;
+        if (!v.huket) antallGjenstaar++;
+      });
+    });
+
+    // Skipp Firebase-skriving hvis ingenting har endret seg - reduserer trafikk
+    // betraktelig når brukeren bare scroller eller åpner/lukker varer uten å
+    // faktisk endre noe som påvirker tallet.
+    if (alleLister[idx].antallVarer === antallVarer &&
+        alleLister[idx].antallGjenstaar === antallGjenstaar) return;
+
+    alleLister[idx].antallVarer = antallVarer;
+    alleLister[idx].antallGjenstaar = antallGjenstaar;
+    lagreLister();
   }
 
   function initFirebase() {
