@@ -1456,7 +1456,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v32-vis-versjon';
+  var APP_VERSJON = 'matplan-v33-versjon-tekst';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -3454,8 +3454,12 @@
 
   // Vis appversjon nederst på forsiden, slik at brukere enkelt kan sjekke
   // om de har fått siste oppdatering (uten å sende en tilbakemelding).
+  // Viser kun "Versjon NN" - tallet trekkes ut av APP_VERSJON automatisk.
   var versjonEl = document.getElementById('app-versjon');
-  if (versjonEl) versjonEl.textContent = APP_VERSJON;
+  if (versjonEl) {
+    var vMatch = APP_VERSJON.match(/v(\d+)/);
+    versjonEl.textContent = vMatch ? 'Versjon ' + vMatch[1] : APP_VERSJON;
+  }
 
   oppdaterTeller();
   oppdaterKategoriSynlighet();
