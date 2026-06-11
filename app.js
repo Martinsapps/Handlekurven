@@ -1456,7 +1456,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v30-kat-opprydding';
+  var APP_VERSJON = 'matplan-v31-katnavn-fiks';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2302,8 +2302,6 @@
     { navn:'Hermetiske tomater', kategori:'basis' }, { navn:'Toalettpapir', kategori:'husholdning' }
   ];
 
-  var katNavn = { kjott:'🥩', fisk:'🐟', meieri:'🥛', frukt:'🥦', brod:'🍞', basis:'🥫', husholdning:'🧹', diverse:'🛍️' };
-
   // Bygger HTML for enhets-options for basis-rediger-panel (samme enheter som hovedlisten)
   function basisEnhetOptions(valgt) {
     var enh = ['','stk','pk','kg','g','liter','dl','ml','pose','boks','flaske'];
@@ -2322,9 +2320,10 @@
       var vare = basisVarer[i];
       var div  = document.createElement('div');
       div.className = 'basis-vare';
-      // Vis emoji for predefinerte kategorier, navnet for egne kategorier
+      // Vis emoji for predefinerte kategorier, navnet for egne kategorier.
+      // katEmoji er den globale tabellen og dekker alle listetypenes kategorier.
       var katEgen = egneKategorier.find(function(k) { return k.id === vare.kategori; });
-      var katVis = katNavn[vare.kategori] || (katEgen ? katEgen.navn : '');
+      var katVis = katEmoji[vare.kategori] || (katEgen ? katEgen.navn : '');
       // Mengde-badge hvis satt
       var mengdeTekst = vare.antall ? (vare.antall + ' ' + (vare.enhet || 'stk')) : '';
       div.innerHTML =
