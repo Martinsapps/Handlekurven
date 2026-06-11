@@ -101,6 +101,11 @@
   var aktivListeType = 'mat';
   var aktivStandardKategorier = standardKategorierPerType.mat;
 
+  // Settes når listen åpnes med en annen type enn den dataen sist ble lagret
+  // under (typebytte). Da prøver byggListeFraData å løfte varer ut av Diverse
+  // til riktig kategori i den nye typen. Nullstilles ved lagring.
+  var reKategoriserDiverse = false;
+
   function standardKategorierFor(type) {
     return standardKategorierPerType[type] || standardKategorierPerType.mat;
   }
@@ -502,6 +507,13 @@
     // Bygg standardkategoriene for listens type (mat-liste får matkategorier,
     // verktøyliste får verktøykategorier osv.)
     byggStandardKategorierDOM(liste.type || 'mat');
+
+    // Typebytte-deteksjon: markøren sier hvilken type dataen sist ble lagret
+    // under. Avvik betyr at listen har byttet type → re-kategoriser Diverse.
+    // Mangler markøren (pre-v29-data) antar vi 'mat', siden alle lister ble
+    // rendret med mat-kategorier før typene fikk egne sett.
+    var typeMarker = localStorage.getItem('matplan-kattype-' + id) || 'mat';
+    reKategoriserDiverse = typeMarker !== aktivListeType;
 
     // Bytt til riktig sett av egne kategorier for denne konteksten
     // (personlige for personlige lister, husstandens for husstand-lister)
@@ -1240,6 +1252,20 @@
 
   var aktivAutoIndex = -1;
 
+  // Velger riktig kategori for et autofullfør-forslag i gjeldende listetype.
+  // 1) Forslagets egen kategori hvis den finnes i typen (og ikke er diverse)
+  // 2) Typens ordliste-gjenkjenning på navnet
+  // 3) Forslagets kategori hvis gyldig, ellers Diverse
+  // Rekkefølgen bevarer mat-oppførselen (taggene er mat-id-er) samtidig som
+  // bygg/hus/arrangement får re-gjenkjenning mot sine egne ordlister.
+  function autofullførKat(navn, kat) {
+    var gyldige = aktiveKategoriIder();
+    if (kat && kat !== 'diverse' && gyldige.indexOf(kat) !== -1) return kat;
+    var treff = finnKategori(navn || '');
+    if (treff) return treff;
+    return (kat && gyldige.indexOf(kat) !== -1) ? kat : 'diverse';
+  }
+
   // Henter varer fra brukerens handlehistorikk som er handlet 3+ ganger
   // de siste 3 månedene. Disse legges til autofullføringen som "lærte" forslag.
   function hentLaartOrdliste() {
@@ -1308,11 +1334,15 @@
     var html = '';
     treff.slice(0, 7).forEach(function(o, i) {
       var laartMerke = o.laart ? '<span class="kat-badge" title="Fra din handlehistorikk">⭐</span>' : '';
+      // Normaliser kategorien mot gjeldende listetype: ordliste-tagger stammer
+      // fra mat-settet, så i andre listetyper må vi re-gjenkjenne mot typens
+      // ordlister (ellers havner f.eks. 'Skruer' i Diverse i en byggliste).
+      var visKat = autofullførKat(o.navn, o.kat);
       html += '<div class="autofullfør-valg" data-navn="' + o.navn.replace(/"/g, '&quot;') +
-        '" data-kat="' + (o.kat || 'diverse') + '">'+
+        '" data-kat="' + visKat + '">'+
         '<span>' + o.navn + '</span>'+
         laartMerke +
-        '<span class="kat-badge">' + (katEmoji[o.kat] || '') + '</span>'+
+        '<span class="kat-badge">' + (katEmoji[visKat] || '') + '</span>'+
         '</div>';
     });
     liste.innerHTML = html;
@@ -1336,8 +1366,9 @@
     var sel = document.getElementById('velg-kategori');
     if (sel) {
       sel.value = kat;
-      // Forslaget kan bære en kategori fra en annen listetype - fall til Diverse
-      if (sel.value !== kat) sel.value = 'diverse';
+      // Forslaget kan bære en kategori fra en annen listetype - prøv typens
+      // gjenkjenning på navnet før vi faller til Diverse
+      if (sel.value !== kat) sel.value = finnKategori(navn) || 'diverse';
     }
     lukkAutofullfør();
 
@@ -1425,7 +1456,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v29-typekategorier';
+  var APP_VERSJON = 'matplan-v30-kat-opprydding';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2516,15 +2547,38 @@
     var kategorier = aktiveKategoriIder();
 
     // Migrering: varer lagret i kategorier som ikke finnes i denne listetypen
-    // (f.eks. matvarer i en liste som ble opprettet som bygg-liste før typene
-    // fikk egne kategorisett) flyttes til Diverse. Endringen persisteres
-    // automatisk ved neste lagreAlt siden hentData kun leser synlige uls.
+    // (typisk etter typebytte) re-kategoriseres mot den nye typens ordlister.
+    // 'Melk' går til Meieri i en matliste, 'Hammer' til Verktøy i en byggliste.
+    // Det vi ikke gjenkjenner havner i Diverse. Persisteres ved neste lagreAlt.
     Object.keys(data).forEach(function(key) {
       if (kategorier.indexOf(key) === -1 && Array.isArray(data[key]) && data[key].length > 0) {
-        data.diverse = (data.diverse || []).concat(data[key]);
+        data[key].forEach(function(v) {
+          var mål = finnKategori((v && v.navn) || '') || 'diverse';
+          if (kategorier.indexOf(mål) === -1) mål = 'diverse';
+          data[mål] = data[mål] || [];
+          data[mål].push(v);
+        });
         delete data[key];
       }
     });
+
+    // Ved typebytte: prøv også å løfte varer ut av Diverse - de ble typisk
+    // dumpet dit av en tidligere migrering under feil type. Kjøres KUN når
+    // typen faktisk er byttet, så varer brukeren selv har plassert i Diverse
+    // ikke flyttes i vanlig bruk.
+    if (reKategoriserDiverse && Array.isArray(data.diverse)) {
+      var blirIDiverse = [];
+      data.diverse.forEach(function(v) {
+        var mål = finnKategori((v && v.navn) || '');
+        if (mål && mål !== 'diverse' && kategorier.indexOf(mål) !== -1) {
+          data[mål] = data[mål] || [];
+          data[mål].push(v);
+        } else {
+          blirIDiverse.push(v);
+        }
+      });
+      data.diverse = blirIDiverse;
+    }
 
     kategorier.forEach(function(id) {
       var liste = document.getElementById(id);
@@ -2630,6 +2684,11 @@
     // Alltid lagre lokalt først (per liste)
     localStorage.setItem('matplan-varer-' + aktivListeId, JSON.stringify(data));
     localStorage.setItem('matplan-basis-' + aktivListeId, JSON.stringify(basisVarer));
+    // Dataen er nå lagret under gjeldende type - oppdater typemarkøren og
+    // skru av typebytte-migreringen så manuelt plasserte Diverse-varer
+    // ikke flyttes ved senere re-render i samme økt.
+    localStorage.setItem('matplan-kattype-' + aktivListeId, aktivListeType);
+    reKategoriserDiverse = false;
     // egneKategorier lagres til kontekst-spesifikk localStorage-nøkkel via
     // lagreEgneKategorier(). lagreAlt skriver derfor ikke dette her lenger.
 
