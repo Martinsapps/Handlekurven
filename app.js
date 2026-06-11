@@ -54,6 +54,118 @@
   }
 
   // ==============================
+  // STANDARDKATEGORIER PER LISTETYPE
+  // ==============================
+  // Hver listetype har sitt eget sett standardkategorier, slik at en
+  // verktøyliste ikke viser Kjøtt og Meieri. 'diverse' finnes i alle typer
+  // som sikkerhetsnett. Egne kategorier legges alltid til i tillegg.
+  // Id-ene brukes som DOM-id og som nøkler i lagret data - kun ASCII.
+  var standardKategorierPerType = {
+    mat: [
+      { id:'kjott',       navn:'🥩 Kjøtt' },
+      { id:'fisk',        navn:'🐟 Fisk og skalldyr' },
+      { id:'meieri',      navn:'🥛 Meieriprodukter' },
+      { id:'frukt',       navn:'🥦 Frukt og grønt' },
+      { id:'brod',        navn:'🍞 Brød og bakevarer' },
+      { id:'basis',       navn:'🥫 Basisvarer' },
+      { id:'husholdning', navn:'🧹 Husholdning' },
+      { id:'diverse',     navn:'🛍️ Diverse' }
+    ],
+    arrangement: [
+      { id:'drikke',      navn:'🥤 Drikke' },
+      { id:'festmat',     navn:'🍽️ Mat' },
+      { id:'snacks',      navn:'🍿 Snacks og godteri' },
+      { id:'pynt',        navn:'🎈 Pynt og utstyr' },
+      { id:'diverse',     navn:'🛍️ Diverse' }
+    ],
+    hus: [
+      { id:'rengjoring',  navn:'🧹 Rengjøring' },
+      { id:'interior',    navn:'🛋️ Interiør' },
+      { id:'hage',        navn:'🪴 Hage og planter' },
+      { id:'diverse',     navn:'🛍️ Diverse' }
+    ],
+    bygg: [
+      { id:'verktoy',     navn:'🔨 Verktøy' },
+      { id:'materialer',  navn:'🪵 Materialer' },
+      { id:'festemidler', navn:'🔩 Skruer og festemidler' },
+      { id:'maling',      navn:'🎨 Maling og overflate' },
+      { id:'diverse',     navn:'🛍️ Diverse' }
+    ],
+    diverse: [
+      { id:'diverse',     navn:'🛍️ Diverse' }
+    ]
+  };
+
+  // Typen til listen som er åpen nå. Styrer hvilke kategorier som bygges,
+  // hvilke ordlister auto-gjenkjenning bruker, og innholdet i nedtrekksmenyene.
+  var aktivListeType = 'mat';
+  var aktivStandardKategorier = standardKategorierPerType.mat;
+
+  function standardKategorierFor(type) {
+    return standardKategorierPerType[type] || standardKategorierPerType.mat;
+  }
+
+  function aktiveStandardIder() {
+    return aktivStandardKategorier.map(function(k) { return k.id; });
+  }
+
+  // Standard + egne kategorier - settet hentData/byggListeFraData jobber mot.
+  function aktiveKategoriIder() {
+    return aktiveStandardIder().concat(egneKategorier.map(function(k) { return k.id; }));
+  }
+
+  // Bygger kategori-DOM for en listetype. Kalles fra åpneListe FØR egne
+  // kategorier og varedata lastes, slik at ul-elementene finnes når
+  // byggListeFraData skal fylle dem.
+  function byggStandardKategorierDOM(type) {
+    aktivListeType = type || 'mat';
+    aktivStandardKategorier = standardKategorierFor(aktivListeType);
+
+    var container = document.getElementById('kategorier-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    aktivStandardKategorier.forEach(function(kat, i) {
+      var div = document.createElement('div');
+      div.className = 'kategori';
+      div.id = 'kat-' + kat.id;
+      // 'basis' har avvikende pil-id pga. kollisjon med basisliste-panelet i
+      // sidebar - pilIdMap i toggleKategori kjenner unntaket.
+      var pilId = kat.id === 'basis' ? 'basis-kat-pil' : kat.id + '-pil';
+      div.innerHTML =
+        '<div class="kategori-header" onclick="toggleKategori(\'' + kat.id + '\')">' +
+          '<p class="kategori-tittel" id="' + kat.id + '-header">' + kat.navn + '</p>' +
+          '<span class="kategori-pil" id="' + pilId + '">▼</span>' +
+          '<button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori(\'' + kat.id + '\')">A–Å</button>' +
+        '</div>' +
+        '<ul id="' + kat.id + '"></ul>';
+      container.appendChild(div);
+      // Skillelinje mellom kategoriene, men ikke etter siste (egne kategorier
+      // bringer sin egen ledende linje).
+      if (i < aktivStandardKategorier.length - 1) {
+        var hr = document.createElement('hr');
+        hr.className = 'skillelinje';
+        hr.id = 'skille-' + kat.id;
+        container.appendChild(hr);
+      }
+    });
+
+    // Nullstill registrene til kun standard - egne kategorier re-registreres
+    // av rebuildEgneKategorierFraData (kalles rett etter i åpneListe).
+    katIder = aktiveStandardIder();
+    alleKategorier = aktivStandardKategorier.slice();
+    oppdaterKategoriVelgere();
+  }
+
+  // Navn for en kategori-id i gjeldende liste (standard eller egen).
+  function katNavn(katId) {
+    for (var i = 0; i < alleKategorier.length; i++) {
+      if (alleKategorier[i].id === katId) return alleKategorier[i].navn;
+    }
+    return katId;
+  }
+
+  // ==============================
   // FORSIDE – LISTOVERSIKT
   // ==============================
   var alleLister = [];       // [{id, navn, opprettet}, ...]
@@ -142,9 +254,10 @@
       if (data) {
         try {
           var parsed = JSON.parse(data);
-          var kats = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
-          kats.forEach(function(k) {
-            if (parsed[k]) {
+          // Teller alle kategorinøkler i dataen uansett listetype - settet
+          // varierer per type, så vi kan ikke anta et fast kategorisett her.
+          Object.keys(parsed).forEach(function(k) {
+            if (Array.isArray(parsed[k])) {
               antallVarer += parsed[k].length;
               antallGjenstaar += parsed[k].filter(function(v) { return !v.huket; }).length;
             }
@@ -386,6 +499,10 @@
     var typeInfo = listeTypeInfo(liste.type || 'mat');
     document.getElementById('aktiv-liste-tittel').textContent = typeInfo.ikon + ' ' + liste.navn;
 
+    // Bygg standardkategoriene for listens type (mat-liste får matkategorier,
+    // verktøyliste får verktøykategorier osv.)
+    byggStandardKategorierDOM(liste.type || 'mat');
+
     // Bytt til riktig sett av egne kategorier for denne konteksten
     // (personlige for personlige lister, husstandens for husstand-lister)
     bytteEgneKategorierKontekst(aktivListeKontekst);
@@ -422,12 +539,8 @@
       byggListeFraData(JSON.parse(lagretVarer));
     } else {
       // Tom liste – tøm varer i alle kategorier (men behold DOM-strukturen for egne kategorier)
-      ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'].forEach(function(k) {
+      aktiveKategoriIder().forEach(function(k) {
         var ul = document.getElementById(k);
-        if (ul) ul.innerHTML = '';
-      });
-      egneKategorier.forEach(function(k) {
-        var ul = document.getElementById(k.id);
         if (ul) ul.innerHTML = '';
       });
       oppdaterTeller();
@@ -625,16 +738,28 @@
   }
 
   function oppdaterKategoriVelgere() {
+    // Bygger nedtrekksmenyene helt på nytt fra gjeldende listetypes
+    // standardkategorier + egne kategorier. Beholder valgt verdi hvis den
+    // fortsatt finnes i det nye settet.
     var selects = document.querySelectorAll('#velg-kategori, #basis-kat-velg');
     selects.forEach(function(sel) {
-      var faste = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
-      while (sel.options.length > faste.length) sel.remove(sel.options.length - 1);
+      var tidligereValgt = sel.value;
+      sel.innerHTML = '';
+      aktivStandardKategorier.forEach(function(k) {
+        var opt = document.createElement('option');
+        opt.value = k.id;
+        opt.textContent = k.navn;
+        sel.appendChild(opt);
+      });
       egneKategorier.forEach(function(k) {
         var opt = document.createElement('option');
         opt.value = k.id;
         opt.textContent = k.navn;
         sel.appendChild(opt);
       });
+      sel.value = tidligereValgt;
+      // Hvis tidligere valg ikke finnes i ny type, faller vi til første
+      if (sel.value !== tidligereValgt || !sel.value) sel.selectedIndex = 0;
     });
   }
 
@@ -1107,7 +1232,10 @@
 
   var katEmoji = {
     kjott:'🥩', fisk:'🐟', meieri:'🥛', frukt:'🥦', brod:'🍞',
-    basis:'🥫', husholdning:'🧹', diverse:'🛍️'
+    basis:'🥫', husholdning:'🧹', diverse:'🛍️',
+    drikke:'🥤', festmat:'🍽️', snacks:'🍿', pynt:'🎈',
+    rengjoring:'🧹', interior:'🛋️', hage:'🪴',
+    verktoy:'🔨', materialer:'🪵', festemidler:'🔩', maling:'🎨'
   };
 
   var aktivAutoIndex = -1;
@@ -1205,8 +1333,11 @@
 
     // Sett felt og kategori
     document.getElementById('ny-vare').value = navn;
-    if (document.getElementById('velg-kategori')) {
-      document.getElementById('velg-kategori').value = kat;
+    var sel = document.getElementById('velg-kategori');
+    if (sel) {
+      sel.value = kat;
+      // Forslaget kan bære en kategori fra en annen listetype - fall til Diverse
+      if (sel.value !== kat) sel.value = 'diverse';
     }
     lukkAutofullfør();
 
@@ -1294,7 +1425,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v28-live-telling';
+  var APP_VERSJON = 'matplan-v29-typekategorier';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -1452,7 +1583,9 @@
   // ==============================
   // SKJUL TOMME KATEGORIER
   // ==============================
-  var katIder = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'];
+  // Initialiseres til mat-settet; byggStandardKategorierDOM setter riktig
+  // sett når en liste åpnes, og egne kategorier legges til/fjernes løpende.
+  var katIder = standardKategorierPerType.mat.map(function(k) { return k.id; });
 
   function oppdaterKategoriSynlighet() {
     for (var k = 0; k < katIder.length; k++) {
@@ -1574,16 +1707,10 @@
   // ==============================
   // FLYTT TIL ANNEN KATEGORI
   // ==============================
-  var alleKategorier = [
-    { id:'kjott',       navn:'🥩 Kjøtt' },
-    { id:'fisk',        navn:'🐟 Fisk og skalldyr' },
-    { id:'meieri',      navn:'🥛 Meieriprodukter' },
-    { id:'frukt',       navn:'🥦 Frukt og grønt' },
-    { id:'brod',        navn:'🍞 Brød og bakevarer' },
-    { id:'basis',       navn:'🥫 Basisvarer' },
-    { id:'husholdning', navn:'🧹 Husholdning' },
-    { id:'diverse',     navn:'🛍️ Diverse' }
-  ];
+  // Standard + egne kategorier for gjeldende liste. Settes av
+  // byggStandardKategorierDOM ved åpning av liste; egne kategorier
+  // legges til av byggEgenKategoriDOM.
+  var alleKategorier = standardKategorierPerType.mat.slice();
 
   function åpneFlytt(knapp) {
     event.stopPropagation();
@@ -1755,25 +1882,43 @@
   // ==============================
   // KATEGORI-GJENKJENNING
   // ==============================
-  var kategoriOrdliste = {
-    fisk:        ['laks','torsk','sei','reke','scampi','ørret','makrell','sild','tunfisk','fisk','hyse','kveite','steinbit','rødspette','brosme','akkar','blekksprut','krabbe','hummer','blåskjell','ansjos','klippfisk','røkelaks','gravlaks'],
-    kjott:       ['kylling','biff','svin','kjøtt','kjøttdeig','pølse','bacon','skinke','ribbe','koteletter','lever','oksekjøtt','lammekjøtt','karbonader','medisterkaker','kjøttkaker','indrefilet','leverpostei','salami','spekeskinke','entrecôte'],
-    meieri:      ['melk','smør','egg','rømme','fløte','yoghurt','ost','kvark','kesam','skyr','kremfløte','brunost','hvitost','jarlsberg','norvegia','gouda','brie','camembert','margarin'],
-    frukt:       ['eple','banan','appelsin','sitron','lime','drue','jordbær','blåbær','bringebær','mango','ananas','melon','pære','plomme','kirsebær','avokado','tomat','agurk','brokkoli','blomkål','gulrot','paprika','løk','hvitløk','purre','spinat','salat','kål','mais','erter','bønner','sopp','squash','selleri','persille','basilikum','koriander','ingefær','chili','potet','søtpotet','reddik','nektarin','fersken'],
-    brod:        ['brød','grovbrød','loff','baguette','ciabatta','rundstykke','bagel','knekkebrød','kneipp','pita','tortilla','lefse','wienerbrød','croissant','muffins','horn','polarbrød'],
-    basis:       ['olje','olivenolje','solsikkeolje','salt','pepper','krydder','pasta','spaghetti','penne','fusilli','ris','mel','hvetemel','havregryn','sukker','melis','gjær','bakepulver','natron','vaniljesukker','sirup','hermetisk','buljong','kraft','saus','ketchup','majones','sennep','eddik','soya','honning','syltetøy','peanøttsmør','kaviar','nøtter','mandler','rosiner','sjokolade','kakao','kaffe','te','müsli','cornflakes','chips','popcorn','kjeks'],
-    husholdning: ['toalettpapir','dopapir','kjøkkenpapir','oppvask','oppvaskmiddel','vaskemiddel','tøymiddel','skyllemiddel','rengjøring','søppelpose','søppelsekk','plastpose','aluminiumsfolie','bakepapir','svamp','skurekost','tannkrem','tannbørste','sjampo','balsam','såpe','dusjsåpe','deodorant','barbering','tamponger','bind','bleier','stearinlys','batterier','lyspære']
-  };
-
-  var katFullnavn = {
-    kjott:'🥩 Kjøtt', fisk:'🐟 Fisk og skalldyr', meieri:'🥛 Meieriprodukter', frukt:'🥦 Frukt og grønt',
-    brod:'🍞 Brød og bakevarer', basis:'🥫 Basisvarer', husholdning:'🧹 Husholdning', diverse:'🛍️ Diverse'
+  // Ordlister per listetype: auto-gjenkjenning matcher kun mot kategorier
+  // som faktisk finnes i gjeldende listetype. Ukjente ord → null → Diverse.
+  var kategoriOrdlisterPerType = {
+    mat: {
+      fisk:        ['laks','torsk','sei','reke','scampi','ørret','makrell','sild','tunfisk','fisk','hyse','kveite','steinbit','rødspette','brosme','akkar','blekksprut','krabbe','hummer','blåskjell','ansjos','klippfisk','røkelaks','gravlaks'],
+      kjott:       ['kylling','biff','svin','kjøtt','kjøttdeig','pølse','bacon','skinke','ribbe','koteletter','lever','oksekjøtt','lammekjøtt','karbonader','medisterkaker','kjøttkaker','indrefilet','leverpostei','salami','spekeskinke','entrecôte'],
+      meieri:      ['melk','smør','egg','rømme','fløte','yoghurt','ost','kvark','kesam','skyr','kremfløte','brunost','hvitost','jarlsberg','norvegia','gouda','brie','camembert','margarin'],
+      frukt:       ['eple','banan','appelsin','sitron','lime','drue','jordbær','blåbær','bringebær','mango','ananas','melon','pære','plomme','kirsebær','avokado','tomat','agurk','brokkoli','blomkål','gulrot','paprika','løk','hvitløk','purre','spinat','salat','kål','mais','erter','bønner','sopp','squash','selleri','persille','basilikum','koriander','ingefær','chili','potet','søtpotet','reddik','nektarin','fersken'],
+      brod:        ['brød','grovbrød','loff','baguette','ciabatta','rundstykke','bagel','knekkebrød','kneipp','pita','tortilla','lefse','wienerbrød','croissant','muffins','horn','polarbrød'],
+      basis:       ['olje','olivenolje','solsikkeolje','salt','pepper','krydder','pasta','spaghetti','penne','fusilli','ris','mel','hvetemel','havregryn','sukker','melis','gjær','bakepulver','natron','vaniljesukker','sirup','hermetisk','buljong','kraft','saus','ketchup','majones','sennep','eddik','soya','honning','syltetøy','peanøttsmør','kaviar','nøtter','mandler','rosiner','sjokolade','kakao','kaffe','te','müsli','cornflakes','chips','popcorn','kjeks'],
+      husholdning: ['toalettpapir','dopapir','kjøkkenpapir','oppvask','oppvaskmiddel','vaskemiddel','tøymiddel','skyllemiddel','rengjøring','søppelpose','søppelsekk','plastpose','aluminiumsfolie','bakepapir','svamp','skurekost','tannkrem','tannbørste','sjampo','balsam','såpe','dusjsåpe','deodorant','barbering','tamponger','bind','bleier','stearinlys','batterier','lyspære']
+    },
+    arrangement: {
+      drikke:  ['brus','cola','fanta','solo','sprite','øl','vin','champagne','prosecco','cider','saft','juice','eplemost','farris','vann','drikke','kaffe','te','isbiter','energidrikk','rusbrus','mineralvann'],
+      festmat: ['pizza','grandiosa','pølse','hamburger','taco','grill','snitter','wraps','salat','kake','bløtkake','muffins','cupcake','gele','iskrem','pinnemat','spekemat','ostefat','kransekake','rundstykke','baguette','påsmurt'],
+      snacks:  ['chips','godteri','sjokolade','popcorn','nøtter','smågodt','twist','kjeks','dip','saltstenger','ostepop','skumgodt','lakris','seigmenn','potetgull','snacks'],
+      pynt:    ['ballong','serviett','duk','pynt','konfetti','engangs','sugerør','kopper','tallerken','bestikk','gave','gavepapir','bånd','flagg','girlander','kakefat','telys','lys','invitasjon']
+    },
+    hus: {
+      rengjoring: ['vaskemiddel','såpe','klut','mopp','bøtte','svamp','zalo','jif','klorin','omo','milo','comfort','tørkepapir','søppelpose','oppvask','støvsuger','rengjøring','kalkfjerner','vindusspray','grønnsåpe','toalettpapir','kjøkkenpapir'],
+      interior:   ['pute','lysestake','ramme','bilde','vase','teppe','gardin','lampe','duk','dekorasjon','stearinlys','pledd','speil','sengetøy','håndkle','dyne','laken','kurv','oppbevaring','telys'],
+      hage:       ['blomst','plante','jord','frø','gjødsel','potte','hageslange','gress','busk','hekk','spade','rive','trillebår','plen','krukke','blomsterløk','såjord']
+    },
+    bygg: {
+      verktoy:     ['hammer','sag','drill','skrutrekker','vater','målebånd','tang','kniv','bits','bor','slipemaskin','stige','meisel','skiftenøkkel','sekskantnøkkel','verktøy','høvel','batteridrill'],
+      materialer:  ['planke','plate','gips','isolasjon','list','lekt','kryssfiner','betong','sement','rør','terrassebord','panel','mdf','osb','fliser','trevirke','impregnert'],
+      festemidler: ['skrue','spiker','plugg','bolt','mutter','beslag','vinkel','lim','teip','tape','strips','stift','krok','hengsle','festemasse'],
+      maling:      ['maling','beis','lakk','sparkel','grunning','pensel','malerull','maskeringsteip','white spirit','fugemasse','silikon','primer','malingsfjerner']
+    },
+    diverse: {}
   };
 
   function finnKategori(navn) {
     var l = navn.toLowerCase();
-    for (var kat in kategoriOrdliste) {
-      var ord = kategoriOrdliste[kat];
+    var ordlister = kategoriOrdlisterPerType[aktivListeType] || kategoriOrdlisterPerType.mat;
+    for (var kat in ordlister) {
+      var ord = ordlister[kat];
       for (var i = 0; i < ord.length; i++) { if (l.indexOf(ord[i]) !== -1) return kat; }
     }
     return null;
@@ -1787,7 +1932,7 @@
   // ==============================
   function erFiskeNavn(navn) {
     var l = (navn || '').toLowerCase();
-    var fiskOrd = kategoriOrdliste.fisk;
+    var fiskOrd = kategoriOrdlisterPerType.mat.fisk;
     for (var i = 0; i < fiskOrd.length; i++) {
       if (l.indexOf(fiskOrd[i]) !== -1) return true;
     }
@@ -1869,7 +2014,7 @@
       var boks = document.querySelector('.legg-til-boks');
       boks.parentNode.insertBefore(hint, boks.nextSibling);
     }
-    hint.textContent = '💡 Foreslår: ' + katFullnavn[kategori] + ' – endre i nedtrekksmenyen om ønskelig';
+    hint.textContent = '💡 Foreslår: ' + katNavn(kategori) + ' – endre i nedtrekksmenyen om ønskelig';
     hint.style.display = 'block';
   }
 
@@ -2013,6 +2158,14 @@
     if (parsed) {
       var nyKat = finnKategori(navn);
       if (nyKat) kategori = nyKat;
+    }
+
+    // Defensiv: kategorien må finnes i gjeldende listetype. Kan mangle hvis
+    // f.eks. et autofullfør-forslag bærer en kat fra en annen type. Prøv
+    // gjenkjenning mot typens ordliste først, fall så til Diverse.
+    if (!kategori || !document.getElementById(kategori)) {
+      kategori = finnKategori(navn) || 'diverse';
+      if (!document.getElementById(kategori)) kategori = 'diverse';
     }
 
     document.getElementById(kategori).appendChild(lagVareElement(navn, antall, enhet));
@@ -2338,7 +2491,7 @@
   }
 
   function hentData() {
-    var kategorier = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'].concat(egneKategorier.map(function(k){return k.id;}));
+    var kategorier = aktiveKategoriIder();
     var data = {};
     kategorier.forEach(function(id) {
       var liste = document.getElementById(id);
@@ -2360,7 +2513,19 @@
   }
 
   function byggListeFraData(data) {
-    var kategorier = ['kjott','fisk','meieri','frukt','brod','basis','husholdning','diverse'].concat(egneKategorier.map(function(k){return k.id;}));
+    var kategorier = aktiveKategoriIder();
+
+    // Migrering: varer lagret i kategorier som ikke finnes i denne listetypen
+    // (f.eks. matvarer i en liste som ble opprettet som bygg-liste før typene
+    // fikk egne kategorisett) flyttes til Diverse. Endringen persisteres
+    // automatisk ved neste lagreAlt siden hentData kun leser synlige uls.
+    Object.keys(data).forEach(function(key) {
+      if (kategorier.indexOf(key) === -1 && Array.isArray(data[key]) && data[key].length > 0) {
+        data.diverse = (data.diverse || []).concat(data[key]);
+        delete data[key];
+      }
+    });
+
     kategorier.forEach(function(id) {
       var liste = document.getElementById(id);
       if (!liste) return;

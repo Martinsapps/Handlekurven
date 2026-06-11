@@ -282,86 +282,8 @@
 
   <hr class="skillelinje">
 
-  <!-- KATEGORIER -->
-  <div class="kategori" id="kat-kjott">
-    <div class="kategori-header" onclick="toggleKategori('kjott')">
-      <p class="kategori-tittel" id="kjott-header">🥩 Kjøtt</p>
-      <span class="kategori-pil" id="kjott-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('kjott')">A–Å</button>
-    </div>
-    <ul id="kjott"></ul>
-  </div>
-  <hr class="skillelinje" id="skille-kjott">
-
-  <div class="kategori" id="kat-fisk">
-    <div class="kategori-header" onclick="toggleKategori('fisk')">
-      <p class="kategori-tittel" id="fisk-header">🐟 Fisk og skalldyr</p>
-      <span class="kategori-pil" id="fisk-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('fisk')">A–Å</button>
-    </div>
-    <ul id="fisk"></ul>
-  </div>
-  <hr class="skillelinje" id="skille-fisk">
-
-  <div class="kategori" id="kat-meieri">
-    <div class="kategori-header" onclick="toggleKategori('meieri')">
-      <p class="kategori-tittel" id="meieri-header">🥛 Meieriprodukter</p>
-      <span class="kategori-pil" id="meieri-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('meieri')">A–Å</button>
-    </div>
-    <ul id="meieri"></ul>
-  </div>
-  <hr class="skillelinje" id="skille-meieri">
-
-  <div class="kategori" id="kat-frukt">
-    <div class="kategori-header" onclick="toggleKategori('frukt')">
-      <p class="kategori-tittel" id="frukt-header">🥦 Frukt og grønt</p>
-      <span class="kategori-pil" id="frukt-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('frukt')">A–Å</button>
-    </div>
-    <ul id="frukt"></ul>
-  </div>
-  <hr class="skillelinje" id="skille-frukt">
-
-  <div class="kategori" id="kat-brod">
-    <div class="kategori-header" onclick="toggleKategori('brod')">
-      <p class="kategori-tittel" id="brod-header">🍞 Brød og bakevarer</p>
-      <span class="kategori-pil" id="brod-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('brod')">A–Å</button>
-    </div>
-    <ul id="brod"></ul>
-  </div>
-  <hr class="skillelinje" id="skille-brod">
-
-  <div class="kategori" id="kat-basis">
-    <div class="kategori-header" onclick="toggleKategori('basis')">
-      <p class="kategori-tittel" id="basis-header">🥫 Basisvarer</p>
-      <span class="kategori-pil" id="basis-kat-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('basis')">A–Å</button>
-    </div>
-    <ul id="basis"></ul>
-  </div>
-  <hr class="skillelinje" id="skille-basis">
-
-  <div class="kategori" id="kat-husholdning">
-    <div class="kategori-header" onclick="toggleKategori('husholdning')">
-      <p class="kategori-tittel" id="husholdning-header">🧹 Husholdningsartikler</p>
-      <span class="kategori-pil" id="husholdning-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('husholdning')">A–Å</button>
-    </div>
-    <ul id="husholdning"></ul>
-  </div>
-  <hr class="skillelinje" id="skille-husholdning">
-
-  <div class="kategori" id="kat-diverse">
-    <div class="kategori-header" onclick="toggleKategori('diverse')">
-      <p class="kategori-tittel" id="diverse-header">🛍️ Diverse</p>
-      <span class="kategori-pil" id="diverse-pil">▼</span>
-      <button class="sorter-knapp" onclick="event.stopPropagation(); sorterKategori('diverse')">A–Å</button>
-    </div>
-    <ul id="diverse"></ul>
-  </div>
-
+  <!-- KATEGORIER - bygges dynamisk av byggStandardKategorierDOM() basert paa listetype -->
+  <div id="kategorier-container"></div>
 
   <div id="egne-kategorier-container"></div>
 
