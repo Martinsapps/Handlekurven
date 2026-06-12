@@ -874,15 +874,22 @@
     .sidebar-innhold.aktiv { display: block; }
 
     /* AUTOFULLFØR */
-    .autofullfør-wrapper { position: relative; flex: 1; }
+    /* min-width: 0 hindrer at chip-raden presser flex-elementet bredere
+       enn skjermen - uten den scroller hele siden i stedet for raden */
+    .autofullfør-wrapper { position: relative; flex: 1; min-width: 0; }
     .autofullfør-wrapper input[type="text"] { width: 100%; }
     /* Forslagene vises som horisontale chips i flyt under skrivefeltet
        (ikke som flytende overlegg), slik at kategori- og mengdefeltene
-       aldri dekkes til. Raden scroller sideveis ved mange treff. */
+       aldri dekkes til. Raden scroller sideveis ved mange treff.
+       touch-action: pan-x gir raden eierskap til sideveis-gesturen, og
+       overscroll-behavior hindrer at scrollen smitter over på siden. */
     .autofullfør-liste {
       display: none; margin-top: 8px; gap: 6px;
+      max-width: 100%;
       overflow-x: auto; overflow-y: hidden;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      overscroll-behavior-x: contain;
       scrollbar-width: none; padding-bottom: 2px;
     }
     .autofullfør-liste::-webkit-scrollbar { display: none; }
