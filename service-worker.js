@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v35-hybrid-historikk';
+const CACHE_NAME = 'matplan-v36-chips-laering';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {

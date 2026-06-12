@@ -876,22 +876,28 @@
     /* AUTOFULLFØR */
     .autofullfør-wrapper { position: relative; flex: 1; }
     .autofullfør-wrapper input[type="text"] { width: 100%; }
+    /* Forslagene vises som horisontale chips i flyt under skrivefeltet
+       (ikke som flytende overlegg), slik at kategori- og mengdefeltene
+       aldri dekkes til. Raden scroller sideveis ved mange treff. */
     .autofullfør-liste {
-      display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-      background: var(--surface); border: 1.5px solid var(--border);
-      border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.10);
-      z-index: 500; overflow: hidden; max-height: 220px; overflow-y: auto;
+      display: none; margin-top: 8px; gap: 6px;
+      overflow-x: auto; overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; padding-bottom: 2px;
     }
-    .autofullfør-liste.synlig { display: block; }
+    .autofullfør-liste::-webkit-scrollbar { display: none; }
+    .autofullfør-liste.synlig { display: flex; }
     .autofullfør-valg {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; font-size: 14px; color: var(--text);
-      cursor: pointer; border-bottom: 1px solid var(--bg);
+      flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; font-size: 14px; color: var(--text);
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 18px; cursor: pointer; white-space: nowrap;
     }
-    .autofullfør-valg:last-child { border-bottom: none; }
-    .autofullfør-valg:hover, .autofullfør-valg.aktiv { background: var(--bg); }
+    .autofullfør-valg:hover, .autofullfør-valg.aktiv {
+      background: var(--green-lt); border-color: var(--green-bd);
+    }
     .autofullfør-valg .kat-badge {
-      font-size: 11px; color: var(--muted); margin-left: auto; flex-shrink: 0;
+      font-size: 12px; color: var(--muted); flex-shrink: 0;
     }
     .autofullfør-valg .ny-vare-hint {
       font-style: italic; color: var(--muted);

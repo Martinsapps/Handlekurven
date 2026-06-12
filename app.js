@@ -965,20 +965,27 @@
     handleHistorikk = data;
   }
 
-  function loggHandlet(navn, kat) {
+  // Logger en handling på en vare. manuell=true betyr et bevisst valg
+  // (flytting med 🔁) som lærer kategorien umiddelbart.
+  function loggHandlet(navn, kat, manuell) {
     if (!navn || navn.trim() === '') return;
     var gruppe = historikkNøkkel();
     var nøkkel = navn.trim().toLowerCase();
     if (!handleHistorikk[gruppe]) handleHistorikk[gruppe] = {};
     if (!handleHistorikk[gruppe][nøkkel]) handleHistorikk[gruppe][nøkkel] = [];
-    handleHistorikk[gruppe][nøkkel].push({
+    var oppføring = {
       navn: navn.trim(),
       kat: kat || 'diverse',
       dato: Date.now()
-    });
-    // Behold kun de siste 12 ukene
-    var grense = Date.now() - (12 * 7 * 24 * 60 * 60 * 1000);
-    handleHistorikk[gruppe][nøkkel] = handleHistorikk[gruppe][nøkkel].filter(function(e) { return e.dato > grense; });
+    };
+    if (manuell) oppføring.manuell = true;
+    handleHistorikk[gruppe][nøkkel].push(oppføring);
+    // Behold de siste 10 oppføringene per vare - antallsbasert, ikke
+    // tidsbasert, slik at kategori-læringen overlever sesongvarer
+    // (grillkull i fjor sommer huskes til neste sommer). Frekvens-funksjonene
+    // (⭐-forslag, favoritt-forslag) filtrerer selv på dato.
+    var arr = handleHistorikk[gruppe][nøkkel];
+    if (arr.length > 10) handleHistorikk[gruppe][nøkkel] = arr.slice(arr.length - 10);
     lagreHistorikk();
   }
 
@@ -1512,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v35-hybrid-historikk';
+  var APP_VERSJON = 'matplan-v36-chips-laering';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -1822,6 +1829,10 @@
     var li = knapp.closest('li');
     document.getElementById(målKategori).appendChild(li);
     li.querySelector('.flytt-meny').classList.remove('synlig');
+    // Manuell flytting er et bevisst valg - lær kategorien umiddelbart,
+    // så neste tilføyelse av samme vare foreslår denne kategorien.
+    var navnEl = li.querySelector('.vare-tekst');
+    if (navnEl) loggHandlet(navnEl.textContent.trim(), målKategori, true);
     oppdaterTeller();
     oppdaterKategoriSynlighet();
     lagreAlt();
@@ -2081,19 +2092,27 @@
     return null;
   }
 
-  // Lært kategori for et varenavn i gjeldende kontekst+gruppe: krever 3+
-  // avhukinger siste 3 mnd (samme regel som ⭐-forslagene), og at kategorien
-  // fortsatt finnes i listen. Slik husker appen at 'Sjokolade' hører til
-  // brukerens egen 'Lørdagsgodteri'-kategori selv om ordlisten sier Basis.
+  // Lært kategori for et varenavn i gjeldende kontekst+gruppe. Varig minne -
+  // ingen tidsutløp, så sesongvarer huskes til neste sesong. Nye signaler
+  // overstyrer gamle:
+  // - Manuell flytting (🔁) er et bevisst valg → lærer umiddelbart
+  // - Avhukinger lærer når de TO siste er i samme kategori (konsistens),
+  //   så en enkelt feilplassering ikke lærer appen noe galt
+  // Kategorien må fortsatt finnes i listen (slettede egne kategorier ignoreres).
   function lærtKategoriFor(navn) {
     var gruppe = historikkNøkkel();
     var gruppeData = handleHistorikk[gruppe] || {};
     var oppføringer = gruppeData[(navn || '').trim().toLowerCase()];
     if (!oppføringer || !oppføringer.length) return null;
-    var grense = Date.now() - (3 * 30 * 24 * 60 * 60 * 1000);
-    var ferske = oppføringer.filter(function(e) { return e.dato >= grense; });
-    if (ferske.length < 3) return null;
-    var kat = ferske[ferske.length - 1].kat;
+
+    var kat = null;
+    var siste = oppføringer[oppføringer.length - 1];
+    if (siste.manuell) {
+      kat = siste.kat;
+    } else if (oppføringer.length >= 2) {
+      var nestSiste = oppføringer[oppføringer.length - 2];
+      if (siste.kat && siste.kat === nestSiste.kat) kat = siste.kat;
+    }
     return (kat && aktiveKategoriIder().indexOf(kat) !== -1) ? kat : null;
   }
 
