@@ -21,7 +21,7 @@
   // ==============================
   function foreslåBasisKategori(navn) {
     if (navn.trim().length < 2) return;
-    var forslag = finnKategori(navn);
+    var forslag = foreslåKategoriForNavn(navn);
     if (forslag) document.getElementById('basis-kat-velg').value = forslag;
   }
 
@@ -519,6 +519,9 @@
     // (personlige for personlige lister, husstandens for husstand-lister)
     bytteEgneKategorierKontekst(aktivListeKontekst);
 
+    // Bytt til riktig handlehistorikk for konteksten (lærte forslag)
+    bytteHistorikkKontekst(aktivListeKontekst);
+
     // Last inn data for denne listen
     lastInnListeData(id);
 
@@ -899,18 +902,67 @@
   // ==============================
   // HANDLEHISTORIKK
   // ==============================
-  var handleHistorikk = {}; // { 'Bananer': [{dato, kat}, ...], ... }
+  // Historikken følger listens kontekst (samme mønster som egne kategorier):
+  // personlige lister lærer av dine egne avhukinger (synces mellom dine
+  // enheter), husstand-lister av husstandens (deles mellom medlemmene).
+  // Privat historikk lærer aldri opp husstand-lister, og omvendt.
+  var handleHistorikk = {}; // aktiv kontekst: { gruppe: { 'bananer': [{dato, kat, navn}], ... } }
+  var handleHistorikkByKontekst = { 'personlig': {} };
+  var ignorerHistorikkEko = {}; // { kontekst: true } - hindrer sync-loop ved egne skriv
   var avvistForslag = [];
 
   function lastInnHistorikk() {
-    var lagret = localStorage.getItem('matplan-historikk');
-    if (lagret) handleHistorikk = JSON.parse(lagret);
+    // Bakoverkompatibilitet: gammel global nøkkel 'matplan-historikk'
+    // migreres til personlig kontekst ved første oppstart.
+    var nyKey = 'matplan-historikk-personlig';
+    var lagret = localStorage.getItem(nyKey);
+    if (!lagret) {
+      var gammel = localStorage.getItem('matplan-historikk');
+      if (gammel) {
+        lagret = gammel;
+        localStorage.setItem(nyKey, gammel);
+        localStorage.removeItem('matplan-historikk');
+      }
+    }
+    if (lagret) {
+      try { handleHistorikk = JSON.parse(lagret); } catch (e) { handleHistorikk = {}; }
+      handleHistorikkByKontekst['personlig'] = handleHistorikk;
+    }
     var avvist = localStorage.getItem('matplan-avvist-forslag');
     if (avvist) avvistForslag = JSON.parse(avvist);
   }
 
   function lagreHistorikk() {
-    localStorage.setItem('matplan-historikk', JSON.stringify(handleHistorikk));
+    var kontekst = aktivListeKontekst || 'personlig';
+    handleHistorikkByKontekst[kontekst] = handleHistorikk;
+    localStorage.setItem('matplan-historikk-' + kontekst, JSON.stringify(handleHistorikk));
+    if (typeof database !== 'undefined' && database && erKoblet && bruker) {
+      ignorerHistorikkEko[kontekst] = true;
+      database.ref(kontekstSti(kontekst, 'historikk')).set(handleHistorikk).catch(function(err) {
+        loggFeil('Lagre historikk: ' + err.message, 'firebase', '');
+      });
+    }
+  }
+
+  // Mottar historikk fra Firebase-lytter for en gitt kontekst.
+  function setHistorikkForKontekst(kontekst, raaData) {
+    if (ignorerHistorikkEko[kontekst]) { delete ignorerHistorikkEko[kontekst]; return; }
+    var data = raaData || {};
+    handleHistorikkByKontekst[kontekst] = data;
+    localStorage.setItem('matplan-historikk-' + kontekst, JSON.stringify(data));
+    var aktiv = aktivListeKontekst || 'personlig';
+    if (kontekst === aktiv) handleHistorikk = data;
+  }
+
+  // Bytter aktiv historikk til riktig kontekst (kalles fra åpneListe).
+  function bytteHistorikkKontekst(kontekst) {
+    var data = handleHistorikkByKontekst[kontekst];
+    if (data === undefined) {
+      var cache = localStorage.getItem('matplan-historikk-' + kontekst);
+      try { data = cache ? JSON.parse(cache) : {}; } catch (e) { data = {}; }
+      handleHistorikkByKontekst[kontekst] = data;
+    }
+    handleHistorikk = data;
   }
 
   function loggHandlet(navn, kat) {
@@ -1259,6 +1311,10 @@
   // Rekkefølgen bevarer mat-oppførselen (taggene er mat-id-er) samtidig som
   // bygg/hus/arrangement får re-gjenkjenning mot sine egne ordlister.
   function autofullførKat(navn, kat) {
+    // Lært kategori vinner alltid - også over ordliste-forslagets egen tag,
+    // så 'Sjokolade' går til brukerens 'Lørdagsgodteri' når den er lært.
+    var lært = lærtKategoriFor(navn || '');
+    if (lært) return lært;
     var gyldige = aktiveKategoriIder();
     if (kat && kat !== 'diverse' && gyldige.indexOf(kat) !== -1) return kat;
     var treff = finnKategori(navn || '');
@@ -1368,7 +1424,7 @@
       sel.value = kat;
       // Forslaget kan bære en kategori fra en annen listetype - prøv typens
       // gjenkjenning på navnet før vi faller til Diverse
-      if (sel.value !== kat) sel.value = finnKategori(navn) || 'diverse';
+      if (sel.value !== kat) sel.value = foreslåKategoriForNavn(navn) || 'diverse';
     }
     lukkAutofullfør();
 
@@ -1456,7 +1512,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v34-treffmotor';
+  var APP_VERSJON = 'matplan-v35-hybrid-historikk';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2025,6 +2081,27 @@
     return null;
   }
 
+  // Lært kategori for et varenavn i gjeldende kontekst+gruppe: krever 3+
+  // avhukinger siste 3 mnd (samme regel som ⭐-forslagene), og at kategorien
+  // fortsatt finnes i listen. Slik husker appen at 'Sjokolade' hører til
+  // brukerens egen 'Lørdagsgodteri'-kategori selv om ordlisten sier Basis.
+  function lærtKategoriFor(navn) {
+    var gruppe = historikkNøkkel();
+    var gruppeData = handleHistorikk[gruppe] || {};
+    var oppføringer = gruppeData[(navn || '').trim().toLowerCase()];
+    if (!oppføringer || !oppføringer.length) return null;
+    var grense = Date.now() - (3 * 30 * 24 * 60 * 60 * 1000);
+    var ferske = oppføringer.filter(function(e) { return e.dato >= grense; });
+    if (ferske.length < 3) return null;
+    var kat = ferske[ferske.length - 1].kat;
+    return (kat && aktiveKategoriIder().indexOf(kat) !== -1) ? kat : null;
+  }
+
+  // Hovedinngangen for kategori-forslag: lært kategori vinner over ordlistene.
+  function foreslåKategoriForNavn(navn) {
+    return lærtKategoriFor(navn) || finnKategori(navn);
+  }
+
   // ==============================
   // FISK/KJØTT-MIGRASJON
   // Gamle data har fisk-varer lagret i 'kjott'-kategorien. Disse må flyttes til
@@ -2096,7 +2173,7 @@
 
   function foreslåKategori(navn) {
     if (navn.trim().length < 2) { skjulHint(); return; }
-    var forslag = finnKategori(navn);
+    var forslag = foreslåKategoriForNavn(navn);
     if (forslag) {
       document.getElementById('velg-kategori').value = forslag;
       visHint(forslag);
@@ -2257,7 +2334,7 @@
     // Hvis parsing endret navnet, sørg for at kategorien oppdateres på det rene navnet
     var kategori = document.getElementById('velg-kategori').value;
     if (parsed) {
-      var nyKat = finnKategori(navn);
+      var nyKat = foreslåKategoriForNavn(navn);
       if (nyKat) kategori = nyKat;
     }
 
@@ -2482,7 +2559,7 @@
       navn = parsed.navn;
       antall = parsed.antall;
       enhet = parsed.enhet;
-      kategori = finnKategori(navn) || document.getElementById('basis-kat-velg').value;
+      kategori = foreslåKategoriForNavn(navn) || document.getElementById('basis-kat-velg').value;
     } else {
       navn = raaTekst.charAt(0).toUpperCase() + raaTekst.slice(1);
       kategori = document.getElementById('basis-kat-velg').value;
@@ -2879,6 +2956,11 @@
       if (ignorerEgneKategorierEko) { ignorerEgneKategorierEko = false; return; }
       setEgneKategorierForKontekst('personlig', snap.val());
     });
+
+    // Lytt på brukerens personlige handlehistorikk (lærte forslag)
+    database.ref(brukerSti('historikk')).on('value', function(snap) {
+      setHistorikkForKontekst('personlig', snap.val());
+    });
   }
 
   // ==============================
@@ -2943,9 +3025,12 @@
         if (!husstandIder[hid]) {
           database.ref('husstander/' + hid + '/lister-meta').off();
           database.ref('husstander/' + hid + '/egne-kategorier').off();
+          database.ref('husstander/' + hid + '/historikk').off();
           delete husstandListenereAktive[hid];
           delete egneKategorierByKontekst[hid];
+          delete handleHistorikkByKontekst[hid];
           localStorage.removeItem('matplan-egne-kategorier-' + hid);
+          localStorage.removeItem('matplan-historikk-' + hid);
           oppdaterListerForKontekst(hid, null);
         }
       });
@@ -2980,6 +3065,9 @@
             });
             database.ref('husstander/' + h.id + '/egne-kategorier').on('value', function(s2) {
               setEgneKategorierForKontekst(h.id, s2.val());
+            });
+            database.ref('husstander/' + h.id + '/historikk').on('value', function(s2) {
+              setHistorikkForKontekst(h.id, s2.val());
             });
           }
         });
@@ -3393,15 +3481,19 @@
         alleLister = [];
         egneKategorier = [];
         egneKategorierByKontekst = { 'personlig': [] };
+        handleHistorikk = {};
+        handleHistorikkByKontekst = { 'personlig': {} };
         basisVarer = [];
         mineHusstander = [];
         // localStorage holder cache - tømmes nå så ny bruker får friskt grunnlag
         localStorage.removeItem('matplan-lister');
         localStorage.removeItem('matplan-egne-kategorier');
-        // Rens også per-kontekst-cache for egne kategorier
+        localStorage.removeItem('matplan-historikk');
+        // Rens også per-kontekst-cache for egne kategorier og historikk
         for (var i = localStorage.length - 1; i >= 0; i--) {
           var key = localStorage.key(i);
-          if (key && key.indexOf('matplan-egne-kategorier-') === 0) {
+          if (key && (key.indexOf('matplan-egne-kategorier-') === 0 ||
+                      key.indexOf('matplan-historikk-') === 0)) {
             localStorage.removeItem(key);
           }
         }
