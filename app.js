@@ -1456,7 +1456,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v33-versjon-tekst';
+  var APP_VERSJON = 'matplan-v34-treffmotor';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -1915,42 +1915,112 @@
   // ==============================
   // Ordlister per listetype: auto-gjenkjenning matcher kun mot kategorier
   // som faktisk finnes i gjeldende listetype. Ukjente ord → null → Diverse.
+  // Skriv ordene i entallsform: prefiks-treff dekker bøyninger
+  // ('ballong' treffer 'ballonger') og suffiks-treff dekker sammensetninger
+  // ('pølse' treffer 'grillpølse'). Ord under 4 tegn krever eksakt treff.
   var kategoriOrdlisterPerType = {
     mat: {
-      fisk:        ['laks','torsk','sei','reke','scampi','ørret','makrell','sild','tunfisk','fisk','hyse','kveite','steinbit','rødspette','brosme','akkar','blekksprut','krabbe','hummer','blåskjell','ansjos','klippfisk','røkelaks','gravlaks'],
-      kjott:       ['kylling','biff','svin','kjøtt','kjøttdeig','pølse','bacon','skinke','ribbe','koteletter','lever','oksekjøtt','lammekjøtt','karbonader','medisterkaker','kjøttkaker','indrefilet','leverpostei','salami','spekeskinke','entrecôte'],
-      meieri:      ['melk','smør','egg','rømme','fløte','yoghurt','ost','kvark','kesam','skyr','kremfløte','brunost','hvitost','jarlsberg','norvegia','gouda','brie','camembert','margarin'],
-      frukt:       ['eple','banan','appelsin','sitron','lime','drue','jordbær','blåbær','bringebær','mango','ananas','melon','pære','plomme','kirsebær','avokado','tomat','agurk','brokkoli','blomkål','gulrot','paprika','løk','hvitløk','purre','spinat','salat','kål','mais','erter','bønner','sopp','squash','selleri','persille','basilikum','koriander','ingefær','chili','potet','søtpotet','reddik','nektarin','fersken'],
-      brod:        ['brød','grovbrød','loff','baguette','ciabatta','rundstykke','bagel','knekkebrød','kneipp','pita','tortilla','lefse','wienerbrød','croissant','muffins','horn','polarbrød'],
-      basis:       ['olje','olivenolje','solsikkeolje','salt','pepper','krydder','pasta','spaghetti','penne','fusilli','ris','mel','hvetemel','havregryn','sukker','melis','gjær','bakepulver','natron','vaniljesukker','sirup','hermetisk','buljong','kraft','saus','ketchup','majones','sennep','eddik','soya','honning','syltetøy','peanøttsmør','kaviar','nøtter','mandler','rosiner','sjokolade','kakao','kaffe','te','müsli','cornflakes','chips','popcorn','kjeks'],
-      husholdning: ['toalettpapir','dopapir','kjøkkenpapir','oppvask','oppvaskmiddel','vaskemiddel','tøymiddel','skyllemiddel','rengjøring','søppelpose','søppelsekk','plastpose','aluminiumsfolie','bakepapir','svamp','skurekost','tannkrem','tannbørste','sjampo','balsam','såpe','dusjsåpe','deodorant','barbering','tamponger','bind','bleier','stearinlys','batterier','lyspære']
+      fisk:        ['laks','torsk','sei','reke','scampi','ørret','makrell','sild','tunfisk','fisk','fiske','seifilet','hyse','kveite','steinbit','rødspette','brosme','akkar','blekksprut','krabbe','hummer','blåskjell','ansjos','klippfisk','røkelaks','gravlaks','sushi','kamskjell','breiflabb'],
+      kjott:       ['kylling','biff','svin','kjøtt','kjøttdeig','pølse','bacon','skinke','ribbe','koteletter','lever','oksekjøtt','lammekjøtt','karbonader','medisterkaker','kjøttkaker','indrefilet','leverpostei','salami','spekeskinke','entrecôte','kalkun','vilt','hjort','elg','reinsdyr','fenalår','pinnekjøtt','spekepølse','svinekam','nakkekoteletter','chorizo','pepperoni','kebab','gyros'],
+      meieri:      ['melk','smør','egg','rømme','fløte','yoghurt','ost','kvark','kesam','skyr','kremfløte','brunost','hvitost','jarlsberg','norvegia','gouda','brie','camembert','margarin','parmesan','mozzarella','feta','cheddar','snøfrisk','kremost','prim','biola','litago','sjokomelk','iskrem','fraiche','cottage'],
+      frukt:       ['eple','banan','appelsin','sitron','lime','drue','jordbær','blåbær','bringebær','mango','ananas','melon','pære','plomme','kirsebær','avokado','tomat','agurk','brokkoli','blomkål','gulrot','paprika','løk','hvitløk','purre','spinat','salat','kål','mais','erter','bønner','sopp','squash','selleri','persille','basilikum','koriander','ingefær','chili','potet','søtpotet','reddik','nektarin','fersken','klementin','mandarin','kiwi','vannmelon','asparges','ruccola','grønnkål','rosenkål','sjalottløk','vårløk','rødløk','dadler','fiken','aprikos','frukt','bær'],
+      brod:        ['brød','grovbrød','loff','baguette','ciabatta','rundstykke','bagel','knekkebrød','kneipp','pita','tortilla','lefse','wienerbrød','croissant','muffins','horn','polarbrød','bolle','skolebrød','toast','naan','focaccia','lompe','gjærbakst'],
+      basis:       ['olje','olivenolje','solsikkeolje','salt','pepper','krydder','pasta','spaghetti','penne','fusilli','ris','mel','hvetemel','havregryn','sukker','melis','gjær','bakepulver','natron','vaniljesukker','sirup','hermetisk','buljong','kraft','saus','ketchup','majones','sennep','eddik','soya','honning','syltetøy','peanøttsmør','kaviar','nøtter','mandler','rosiner','sjokolade','kakao','kaffe','te','müsli','cornflakes','chips','popcorn','kjeks','potetgull','nudler','couscous','quinoa','bulgur','linser','kikerter','pesto','kokosmelk','tomatpure','tomatpuré','taco','granola'],
+      husholdning: ['toalettpapir','dopapir','kjøkkenpapir','oppvask','oppvaskmiddel','vaskemiddel','tøymiddel','skyllemiddel','rengjøring','søppelpose','søppelsekk','plastpose','aluminiumsfolie','bakepapir','svamp','skurekost','tannkrem','tannbørste','sjampo','balsam','såpe','dusjsåpe','deodorant','barbering','tamponger','bind','bleier','stearinlys','batterier','lyspære','zalo','jif','klorin','serviett','folie','frysepose','matpapir','tørkerull','antibac']
     },
     arrangement: {
-      drikke:  ['brus','cola','fanta','solo','sprite','øl','vin','champagne','prosecco','cider','saft','juice','eplemost','farris','vann','drikke','kaffe','te','isbiter','energidrikk','rusbrus','mineralvann'],
-      festmat: ['pizza','grandiosa','pølse','hamburger','taco','grill','snitter','wraps','salat','kake','bløtkake','muffins','cupcake','gele','iskrem','pinnemat','spekemat','ostefat','kransekake','rundstykke','baguette','påsmurt'],
-      snacks:  ['chips','godteri','sjokolade','popcorn','nøtter','smågodt','twist','kjeks','dip','saltstenger','ostepop','skumgodt','lakris','seigmenn','potetgull','snacks'],
-      pynt:    ['ballong','serviett','duk','pynt','konfetti','engangs','sugerør','kopper','tallerken','bestikk','gave','gavepapir','bånd','flagg','girlander','kakefat','telys','lys','invitasjon']
+      drikke:  ['brus','cola','fanta','solo','sprite','øl','vin','champagne','prosecco','cider','saft','juice','eplemost','farris','vann','drikke','kaffe','te','isbiter','energidrikk','rusbrus','mineralvann','pepsi','urge','tonic','soda','iste','nektar','sider','akevitt','vodka','gin','whisky','likør','musserende','rødvin','hvitvin','lettøl','pils','alkoholfri','leskedrikk','smoothie'],
+      festmat: ['pizza','grandiosa','pølse','hamburger','taco','grill','snitter','wraps','salat','kake','bløtkake','muffins','cupcake','gele','iskrem','pinnemat','spekemat','ostefat','kransekake','rundstykke','baguette','påsmurt','tapas','fingermat','kanapeer','spekefat','koldtbord','grillspyd','pai','quiche'],
+      snacks:  ['chips','godteri','sjokolade','popcorn','nøtter','smågodt','twist','kjeks','dip','saltstenger','ostepop','skumgodt','lakris','seigmenn','potetgull','snacks','kvikklunsj','smash','marshmallows','vingummi','karamell','drops','pastiller','tyggegummi','popkorn'],
+      pynt:    ['ballong','serviett','duk','pynt','konfetti','engangs','sugerør','kopper','tallerken','bestikk','gave','gavepapir','bånd','flagg','girlander','kakefat','telys','lys','invitasjon','duker','pappkrus','plastglass','bordkort','partyhatt','pinata','serpentiner','glitter','fakkel']
     },
     hus: {
-      rengjoring: ['vaskemiddel','såpe','klut','mopp','bøtte','svamp','zalo','jif','klorin','omo','milo','comfort','tørkepapir','søppelpose','oppvask','støvsuger','rengjøring','kalkfjerner','vindusspray','grønnsåpe','toalettpapir','kjøkkenpapir'],
-      interior:   ['pute','lysestake','ramme','bilde','vase','teppe','gardin','lampe','duk','dekorasjon','stearinlys','pledd','speil','sengetøy','håndkle','dyne','laken','kurv','oppbevaring','telys'],
-      hage:       ['blomst','plante','jord','frø','gjødsel','potte','hageslange','gress','busk','hekk','spade','rive','trillebår','plen','krukke','blomsterløk','såjord']
+      rengjoring: ['vaskemiddel','såpe','klut','mopp','bøtte','svamp','zalo','jif','klorin','omo','milo','comfort','tørkepapir','søppelpose','oppvask','støvsuger','rengjøring','kalkfjerner','vindusspray','grønnsåpe','toalettpapir','kjøkkenpapir','vask','salmiakk','toalett','støv','tøymykner','antibac','mikrofiber','avløpsåpner','rens'],
+      interior:   ['pute','lysestake','ramme','bilde','vase','teppe','gardin','lampe','duk','dekorasjon','stearinlys','pledd','speil','sengetøy','håndkle','dyne','laken','kurv','oppbevaring','telys','dynetrekk','håndklær','duftlys','duftpinner','skål','mugge','karaffel','servise','glass','bestikk','gryte','stekepanne','panne','kjele','bakeform','ildfast','knagg','hylle','rye','lysslynge'],
+      hage:       ['blomst','plante','jord','frø','gjødsel','potte','hageslange','gress','busk','hekk','spade','rive','trillebår','plen','krukke','blomsterløk','såjord','hage','ugress','sekatør','grill','grillkull','tennvæske','parasoll','utemøbler']
     },
     bygg: {
-      verktoy:     ['hammer','sag','drill','skrutrekker','vater','målebånd','tang','kniv','bits','bor','slipemaskin','stige','meisel','skiftenøkkel','sekskantnøkkel','verktøy','høvel','batteridrill'],
-      materialer:  ['planke','plate','gips','isolasjon','list','lekt','kryssfiner','betong','sement','rør','terrassebord','panel','mdf','osb','fliser','trevirke','impregnert'],
-      festemidler: ['skrue','spiker','plugg','bolt','mutter','beslag','vinkel','lim','teip','tape','strips','stift','krok','hengsle','festemasse'],
-      maling:      ['maling','beis','lakk','sparkel','grunning','pensel','malerull','maskeringsteip','white spirit','fugemasse','silikon','primer','malingsfjerner']
+      verktoy:     ['hammer','sag','drill','skrutrekker','vater','målebånd','tang','kniv','bits','bor','slipemaskin','stige','meisel','skiftenøkkel','sekskantnøkkel','verktøy','høvel','batteridrill','sirkelsag','stikksag','baufil','slegge','kubein','brekkjern','vinkelsliper','skralle','pipenøkkel','momentnøkkel','hansker','vernebriller','hørselvern','skrumaskin'],
+      materialer:  ['planke','plate','gips','isolasjon','list','lekt','kryssfiner','betong','sement','rør','terrassebord','panel','mdf','osb','fliser','trevirke','impregnert','finer','limtre','stolpe','bjelke','takstein','murstein','mørtel','armering','lecablokk','glava','rockwool','membran','vindsperre','dampsperre','rekkverk'],
+      festemidler: ['skrue','spiker','plugg','bolt','mutter','beslag','vinkel','lim','teip','tape','strips','stift','krok','hengsle','festemasse','gjengestang','skive','monteringslim','trelim','kontaktlim','kramper'],
+      maling:      ['maling','beis','lakk','sparkel','grunning','pensel','malerull','maskeringsteip','spirit','fugemasse','silikon','primer','malingsfjerner','terpentin','maskering','rulleskaft','malingsrull']
     },
     diverse: {}
   };
 
-  function finnKategori(navn) {
-    var l = navn.toLowerCase();
-    var ordlister = kategoriOrdlisterPerType[aktivListeType] || kategoriOrdlisterPerType.mat;
+  // Mapping fra mat-kategorier til typens kategorier, slik at hele
+  // matvokabularet (ordlister + autofullfør) gjenbrukes uten duplisering:
+  // 'Bananer' i en arrangementsliste → frukt → 🍽️ Mat.
+  // Typer uten mapping (bygg, diverse) sender ukjente matvarer til Diverse.
+  var matKategoriMapping = {
+    arrangement: { kjott:'festmat', fisk:'festmat', meieri:'festmat', frukt:'festmat', brod:'festmat', basis:'festmat', husholdning:'diverse' },
+    hus:         { husholdning:'rengjoring' }
+  };
+
+  // Splitter et varenavn i ord (små bokstaver; norske tegn og vanlige
+  // aksenter beholdes så 'entrecôte' forblir ett ord og ikke splittes
+  // til 'entrec'+'te' med falskt te-treff)
+  function ordINavn(navn) {
+    return (navn || '').toLowerCase().split(/[^a-zæøåäöüéèêôàç]+/).filter(function(o) { return o.length > 0; });
+  }
+
+  // Scorer ett ordliste-ord mot varenavnets ord. Høyere score = bedre treff.
+  // - Eksakt ordtreff: alltid lov, får stor bonus så det vinner over alt annet
+  // - Prefiks ('ballong' → 'ballonger') og suffiks ('pølse' → 'grillpølse'):
+  //   kun for ordliste-ord på 4+ tegn, så 'te' aldri treffer 'poTEtgull'
+  // - Lengre ordliste-ord vinner over kortere ('potetgull' slår 'potet')
+  function ordTreff(dictOrd, navnOrd) {
+    for (var i = 0; i < navnOrd.length; i++) {
+      var w = navnOrd[i];
+      if (w === dictOrd) return dictOrd.length + 100;
+      if (dictOrd.length >= 4) {
+        if (w.indexOf(dictOrd) === 0) return dictOrd.length;
+        if (w.length > dictOrd.length && w.lastIndexOf(dictOrd) === w.length - dictOrd.length) return dictOrd.length;
+      }
+    }
+    return 0;
+  }
+
+  // Finner beste kategori i et sett ordlister, eller null.
+  function finnKategoriITabell(navnOrd, ordlister) {
+    var besteKat = null, besteScore = 0;
     for (var kat in ordlister) {
       var ord = ordlister[kat];
-      for (var i = 0; i < ord.length; i++) { if (l.indexOf(ord[i]) !== -1) return kat; }
+      for (var i = 0; i < ord.length; i++) {
+        var s = ordTreff(ord[i], navnOrd);
+        if (s > besteScore) { besteScore = s; besteKat = kat; }
+      }
+    }
+    return besteKat;
+  }
+
+  function finnKategori(navn) {
+    var navnOrd = ordINavn(navn);
+    if (navnOrd.length === 0) return null;
+
+    // 1) Typens egne ordlister har høyest prioritet
+    //    ('chips' → Snacks i arrangement, selv om det også er mat-basis)
+    var ordlister = kategoriOrdlisterPerType[aktivListeType] || kategoriOrdlisterPerType.mat;
+    var treff = finnKategoriITabell(navnOrd, ordlister);
+    if (treff) return treff;
+
+    // 2) Gjenbruk matvokabularet via typens mapping
+    var mapping = matKategoriMapping[aktivListeType];
+    if (mapping) {
+      var gyldige = aktiveKategoriIder();
+      var matTreff = finnKategoriITabell(navnOrd, kategoriOrdlisterPerType.mat);
+      if (matTreff && mapping[matTreff] && gyldige.indexOf(mapping[matTreff]) !== -1) {
+        return mapping[matTreff];
+      }
+      // 2b) Autofullfør-listen har fulle varenavn med mat-kategori - sjekk
+      //     eksakt navnetreff der også ('Hermetiske tomater' → basis → Mat)
+      var lNavn = (navn || '').toLowerCase().trim();
+      for (var i = 0; i < ordliste.length; i++) {
+        if (ordliste[i].navn.toLowerCase() === lNavn) {
+          var m = mapping[ordliste[i].kat];
+          if (m && gyldige.indexOf(m) !== -1) return m;
+        }
+      }
     }
     return null;
   }
@@ -1962,10 +2032,10 @@
   // alle localStorage-nøkler) og i Firebase-listenere (på data fra sky).
   // ==============================
   function erFiskeNavn(navn) {
-    var l = (navn || '').toLowerCase();
+    var navnOrd = ordINavn(navn);
     var fiskOrd = kategoriOrdlisterPerType.mat.fisk;
     for (var i = 0; i < fiskOrd.length; i++) {
-      if (l.indexOf(fiskOrd[i]) !== -1) return true;
+      if (ordTreff(fiskOrd[i], navnOrd) > 0) return true;
     }
     return false;
   }
