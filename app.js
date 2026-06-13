@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v37-chips-scroll';
+  var APP_VERSJON = 'matplan-v38-husstand-medlemmer';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -3045,6 +3045,8 @@
           database.ref('husstander/' + hid + '/lister-meta').off();
           database.ref('husstander/' + hid + '/egne-kategorier').off();
           database.ref('husstander/' + hid + '/historikk').off();
+          database.ref('husstander/' + hid + '/medlemmer').off();
+          database.ref('husstander/' + hid + '/medlemsnavn').off();
           delete husstandListenereAktive[hid];
           delete egneKategorierByKontekst[hid];
           delete handleHistorikkByKontekst[hid];
@@ -3088,6 +3090,18 @@
             database.ref('husstander/' + h.id + '/historikk').on('value', function(s2) {
               setHistorikkForKontekst(h.id, s2.val());
             });
+            // Medlemmer: hold antall/modal ferskt + oppdag om DU er fjernet
+            database.ref('husstander/' + h.id + '/medlemmer').on('value', function(s2) {
+              håndterMedlemmerEndring(h.id, s2.val());
+            });
+            // Medlemsnavn: hold navnene i modalen oppdatert
+            database.ref('husstander/' + h.id + '/medlemsnavn').on('value', function(s2) {
+              var hh = mineHusstander.find(function(x) { return x.id === h.id; });
+              if (hh) hh.medlemsnavn = s2.val() || {};
+              if (aktivHusstandModalId === h.id && hh) tegnHusstandMedlemmer(hh);
+            });
+            // Publiser eget visningsnavn så andre medlemmer ser navnet
+            publiserMedlemsnavn(h.id);
           }
         });
       });
@@ -3203,12 +3217,14 @@
       mineHusstander.forEach(function(h) {
         var rad = document.createElement('div');
         rad.className = 'profil-husstand-rad';
+        rad.style.cursor = 'pointer';
         var antall = Object.keys(h.medlemmer || {}).length;
+        // Hele raden åpner husstand-modalen (medlemmer, kode, forlat samlet)
+        rad.onclick = function() { åpneHusstandModal(h.id); };
         rad.innerHTML =
           '<span class="ikon">🏠</span>' +
           '<span class="navn">' + h.navn + ' <span style="color:var(--muted);font-weight:normal">(' + antall + ')</span></span>' +
-          '<button class="handling" title="Vis invitasjonskode" onclick="visInvitasjonskode(\'' + h.id + '\')">📋</button>' +
-          '<button class="handling" title="Forlat husstand" onclick="bekreftForlatHusstand(\'' + h.id + '\',\'' + h.navn.replace(/'/g, "\\'") + '\')">×</button>';
+          '<span class="handling" title="Åpne husstand" style="font-size:18px">›</span>';
         container.appendChild(rad);
       });
       var ekstra = document.createElement('div');
@@ -3269,22 +3285,28 @@
     });
   }
 
-  // Holder hvilken husstand som vises i modalen, slik at bytt-kode-knappen vet
-  // hvilken den jobber mot uten å måtte parses fra DOM.
-  var aktivInvitasjonskodeHusstandId = null;
+  // Holder hvilken husstand modalen jobber mot (bytt-kode, fjern medlem, forlat),
+  // slik at handlingene vet hvilken husstand uten å parse fra DOM.
+  var aktivHusstandModalId = null;
 
-  function visInvitasjonskode(husstandId) {
+  function åpneHusstandModal(husstandId) {
     lukkProfilDropdown();
-    aktivInvitasjonskodeHusstandId = husstandId;
+    aktivHusstandModalId = husstandId;
     var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
-    var navnEl = document.getElementById('invitasjonskode-husstand');
-    if (navnEl) navnEl.textContent = 'Til: ' + (husstand ? husstand.navn : '...');
+
+    // Tittel = husstandens navn
+    var tittelEl = document.getElementById('husstand-modal-tittel');
+    if (tittelEl) tittelEl.textContent = '🏠 ' + (husstand ? husstand.navn : 'Husstand');
+
+    // Medlemsliste
+    tegnHusstandMedlemmer(husstand);
+
     var kodeEl = document.getElementById('invitasjonskode-vis');
     if (kodeEl) kodeEl.textContent = 'Genererer…';
 
-    // Vis "Bytt kode"-knappen kun hvis brukeren er den som opprettet husstanden.
-    // Sikkerhets-poenget: hvis noen lekker en kode, kan kun eieren bytte den
-    // og dermed kaste ut nye uvedkommende.
+    // Vis "Bytt kode"-knappen + fjern-knapper kun for den som opprettet husstanden.
+    // Sikkerhets-poenget: hvis noen lekker en kode, kan kun eieren fjerne
+    // uvedkommende og bytte koden.
     var byttKnapp = document.getElementById('invitasjonskode-bytt-knapp');
     var eierInfo = document.getElementById('invitasjonskode-eier-info');
     var erEier = husstand && bruker && husstand.opprettetAv === bruker.uid;
@@ -3299,14 +3321,154 @@
       loggFeil('Generer kode: ' + err.message, 'husstand', '');
     });
   }
-  function lukkInvitasjonskode() {
+  function lukkHusstandModal() {
     document.getElementById('invitasjonskode-overlay').classList.remove('synlig');
-    aktivInvitasjonskodeHusstandId = null;
+    aktivHusstandModalId = null;
+  }
+
+  // Render medlemslisten i husstand-modalen. Navn hentes fra medlemsnavn (som
+  // hvert medlem publiserer om seg selv); markerer "deg"/"eier" og gir eieren
+  // en fjern-knapp på andre medlemmer. Bygges med DOM-noder + textContent slik
+  // at navn aldri tolkes som HTML.
+  function tegnHusstandMedlemmer(husstand) {
+    var liste = document.getElementById('husstand-medlemmer-liste');
+    if (!liste) return;
+    liste.innerHTML = '';
+    if (!husstand || !husstand.medlemmer || Object.keys(husstand.medlemmer).length === 0) {
+      var tom = document.createElement('div');
+      tom.className = 'husstand-medlem-tom';
+      tom.textContent = 'Ingen medlemmer.';
+      liste.appendChild(tom);
+      return;
+    }
+    var navnMap = husstand.medlemsnavn || {};
+    var minUid = bruker && bruker.uid;
+    var erEier = bruker && husstand.opprettetAv === bruker.uid;
+
+    Object.keys(husstand.medlemmer).forEach(function(uid) {
+      var visningsnavn = navnMap[uid] ||
+        (uid === minUid ? (bruker.displayName || bruker.email || 'Deg') : 'Medlem');
+
+      var rad = document.createElement('div');
+      rad.className = 'husstand-medlem-rad';
+
+      var avatar = document.createElement('span');
+      avatar.className = 'husstand-medlem-avatar';
+      avatar.textContent = (visningsnavn.trim()[0] || '?').toUpperCase();
+      rad.appendChild(avatar);
+
+      var navnEl = document.createElement('span');
+      navnEl.className = 'husstand-medlem-navn';
+      navnEl.textContent = visningsnavn;
+      rad.appendChild(navnEl);
+
+      if (uid === minUid) {
+        var merkeDeg = document.createElement('span');
+        merkeDeg.className = 'husstand-medlem-merke';
+        merkeDeg.textContent = 'deg';
+        rad.appendChild(merkeDeg);
+      } else if (uid === husstand.opprettetAv) {
+        var merkeEier = document.createElement('span');
+        merkeEier.className = 'husstand-medlem-merke';
+        merkeEier.textContent = 'eier';
+        rad.appendChild(merkeEier);
+      }
+
+      // Eieren kan fjerne andre (ikke seg selv – bruk "Forlat husstand" for det)
+      if (erEier && uid !== minUid) {
+        var fjern = document.createElement('button');
+        fjern.className = 'husstand-medlem-fjern';
+        fjern.title = 'Fjern fra husstand';
+        fjern.textContent = '✕';
+        fjern.onclick = function() { bekreftFjernMedlem(husstand.id, uid, visningsnavn); };
+        rad.appendChild(fjern);
+      }
+
+      liste.appendChild(rad);
+    });
+  }
+
+  function bekreftFjernMedlem(husstandId, uid, navn) {
+    visBekreft(
+      'Fjerne ' + navn + ' fra husstanden? De mister umiddelbart tilgang til ' +
+      'husstandens lister. Hvis koden er lekket, bør du også bytte den etterpå.',
+      function() { fjernMedlem(husstandId, uid); },
+      'Ja, fjern'
+    );
+  }
+
+  // Eieren fjerner et medlem: sletter medlemskap + publisert navn. Den fjernede
+  // brukerens egen peker (brukere/{uid}/husstander/{hid}) kan vi ikke røre –
+  // den klienten rydder seg selv via medlemmer-lytteren (håndterMedlemmerEndring).
+  function fjernMedlem(husstandId, uid) {
+    if (!database || !bruker) return;
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    if (!husstand || husstand.opprettetAv !== bruker.uid) {
+      loggFeil('Fjern medlem nektet: ikke eier', 'husstand', '');
+      return;
+    }
+    if (uid === bruker.uid) return; // egen utmelding går via Forlat husstand
+    var oppdateringer = {};
+    oppdateringer['husstander/' + husstandId + '/medlemmer/' + uid] = null;
+    oppdateringer['husstander/' + husstandId + '/medlemsnavn/' + uid] = null;
+    database.ref().update(oppdateringer).then(function() {
+      // Oppdater lokal kopi + UI umiddelbart (lytteren bekrefter like etter)
+      if (husstand.medlemmer) delete husstand.medlemmer[uid];
+      if (husstand.medlemsnavn) delete husstand.medlemsnavn[uid];
+      tegnHusstandMedlemmer(husstand);
+      tegnProfilDropdown();
+    }).catch(function(err) {
+      loggFeil('Fjern medlem: ' + err.message, 'husstand', '');
+    });
+  }
+
+  // Forlat husstand fra modalen – gjenbruker eksisterende bekreft-flyt med
+  // siste-medlem/gjenoppretting-logikk.
+  function forlatFraHusstandModal() {
+    var husstandId = aktivHusstandModalId;
+    if (!husstandId) return;
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    var navn = husstand ? husstand.navn : '';
+    lukkHusstandModal();
+    bekreftForlatHusstand(husstandId, navn);
+  }
+
+  // Publiserer brukerens eget visningsnavn til husstanden så andre medlemmer ser
+  // navn (ikke bare uid). Skriver kun ved endring for å spare writes.
+  function publiserMedlemsnavn(husstandId) {
+    if (!database || !bruker) return;
+    var navn = bruker.displayName || bruker.email || 'Medlem';
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    var eksisterende = husstand && husstand.medlemsnavn ? husstand.medlemsnavn[bruker.uid] : undefined;
+    if (eksisterende === navn) return;
+    database.ref('husstander/' + husstandId + '/medlemsnavn/' + bruker.uid).set(navn).catch(function(err) {
+      loggFeil('Publiser medlemsnavn: ' + err.message, 'husstand', '');
+    });
+  }
+
+  // Reagerer på endringer i en husstands medlemsliste. Hvis brukeren selv ikke
+  // lenger er medlem (fjernet av eier), rydder den sin egen peker så husstanden
+  // forsvinner fra forsiden. Ellers oppdateres antall + åpen modal.
+  function håndterMedlemmerEndring(husstandId, medlemmer) {
+    medlemmer = medlemmer || {};
+    var hh = mineHusstander.find(function(x) { return x.id === husstandId; });
+    if (hh) hh.medlemmer = medlemmer;
+
+    if (bruker && !medlemmer[bruker.uid]) {
+      // Jeg er fjernet (eller har nettopp forlatt) – lukk modal + fjern peker.
+      if (aktivHusstandModalId === husstandId) lukkHusstandModal();
+      var sti = brukerSti('husstander/' + husstandId);
+      if (sti) database.ref(sti).remove().catch(function() {});
+      return;
+    }
+
+    tegnProfilDropdown();
+    if (aktivHusstandModalId === husstandId && hh) tegnHusstandMedlemmer(hh);
   }
 
   // Bekreft før bytte (advarer brukeren om at den gamle koden blir ugyldig).
   function bekreftBytteInvitasjonskode() {
-    var husstandId = aktivInvitasjonskodeHusstandId;
+    var husstandId = aktivHusstandModalId;
     if (!husstandId) return;
     visBekreft(
       'Bytte invitasjonskode? Den gamle koden vil ikke lenger fungere, ' +
