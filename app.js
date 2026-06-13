@@ -1519,8 +1519,28 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v40-endre-visningsnavn';
+  var APP_VERSJON = 'matplan-v41-html-sync';
   var valgtTilbakemeldingType = 'feil';
+
+  // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
+  // iOS standalone-PWA kan selve index.html (app-skallet) serveres fra en gammel
+  // snapshot - da blir statiske UI-elementer (knapper, modaler) hengende igjen.
+  // window.HTML_VERSJON settes i index.html; matcher den ikke APP_VERSJON er
+  // skallet utdatert, og vi tvinger ÉN reload (vakt mot loop via sessionStorage)
+  // for å hente ferskt skall. Siden app.js når fram selv om skallet er gammelt,
+  // er dette selv-helbredende.
+  (function sjekkSkallVersjon() {
+    try {
+      if ((window.HTML_VERSJON || '') === APP_VERSJON) {
+        sessionStorage.removeItem('matplan-skall-reload');
+        return;
+      }
+      if (!sessionStorage.getItem('matplan-skall-reload')) {
+        sessionStorage.setItem('matplan-skall-reload', '1');
+        location.reload();
+      }
+    } catch (e) { /* sessionStorage kan være blokkert – ignorer */ }
+  })();
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
     var type = forhåndsType || 'feil';
