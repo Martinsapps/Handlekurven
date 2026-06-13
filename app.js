@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v38-husstand-medlemmer';
+  var APP_VERSJON = 'matplan-v39-duplikat-tillat';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -2332,10 +2332,30 @@
     return null;
   }
 
+  // Tømmer skrivefeltene etter at en vare er lagt til / håndtert.
+  // Rører IKKE duplikat-advarselen – den styres eksplisitt av kalleren slik at
+  // en bekreftelses-/varselmelding kan bli stående.
+  function tømVareFelt() {
+    var input = document.getElementById('ny-vare');
+    input.value = '';
+    document.getElementById('ny-antall').value = '';
+    document.getElementById('ny-enhet').selectedIndex = 0;
+    input.classList.remove('duplikat-felt');
+  }
+
+  // Viser en melding i feltet over skrivelinja. variant 'info' = grønn
+  // bekreftelse, ellers rød advarsel.
+  function visVareMelding(html, variant) {
+    var el = document.getElementById('duplikat-advarsel');
+    el.innerHTML = html;
+    el.classList.toggle('info', variant === 'info');
+    el.classList.add('synlig');
+  }
+
   function leggTilVare() {
     var input = document.getElementById('ny-vare');
     var raaTekst = input.value.trim();
-    if (!raaTekst || input.classList.contains('duplikat-felt')) return;
+    if (!raaTekst) return;
 
     var navn, antall, enhet;
     // Forsøk å trekke ut mengde + enhet fra navnefeltet (f.eks. "2l melk")
@@ -2348,6 +2368,36 @@
       navn = kapitaliser(raaTekst);
       antall = document.getElementById('ny-antall').value.trim();
       enhet = document.getElementById('ny-enhet').value;
+    }
+
+    // DUPLIKAT-HÅNDTERING (eksakt samme navn finnes allerede):
+    // - Ligger varen avhuket (handlet)? Sett den tilbake som «ikke handlet»
+    //   i stedet for å duplisere. Vekker en avhuket framfor å lage dublett.
+    // - Ligger den aktiv? Tillat dobbeltføring, men varsle brukeren.
+    var navnLower = navn.trim().toLowerCase();
+    var eksisterende = [];
+    document.querySelectorAll('.vare-tekst').forEach(function(el) {
+      if (el.textContent.trim().toLowerCase() === navnLower) {
+        eksisterende.push(el.closest('li'));
+      }
+    });
+    var dobbeltVarsel = false;
+    if (eksisterende.length > 0) {
+      var avhuket = eksisterende.find(function(li) {
+        var s = li.querySelector('.sjekk');
+        return s && s.classList.contains('huket');
+      });
+      if (avhuket) {
+        // hukAv toggler av (oppdaterer teller, synlighet og lagrer)
+        hukAv(avhuket.querySelector('.sjekk'));
+        tømVareFelt();
+        skjulHint();
+        visVareMelding('↩️ <strong>' + navn + '</strong> lå avhuket – satt tilbake som «ikke handlet».', 'info');
+        input.focus();
+        return;
+      }
+      // Alle treff er aktive → vi dobbeltfører, men flagger varsel under.
+      dobbeltVarsel = true;
     }
 
     // Hvis parsing endret navnet, sørg for at kategorien oppdateres på det rene navnet
@@ -2366,11 +2416,12 @@
     }
 
     document.getElementById(kategori).appendChild(lagVareElement(navn, antall, enhet));
-    input.value = '';
-    document.getElementById('ny-antall').value = '';
-    document.getElementById('ny-enhet').selectedIndex = 0;
-    input.classList.remove('duplikat-felt');
-    document.getElementById('duplikat-advarsel').classList.remove('synlig');
+    tømVareFelt();
+    if (dobbeltVarsel) {
+      visVareMelding('⚠️ <strong>' + navn + '</strong> lå allerede på listen – la den til på nytt.');
+    } else {
+      document.getElementById('duplikat-advarsel').classList.remove('synlig');
+    }
     skjulHint();
     oppdaterTeller();
     oppdaterKategoriSynlighet();
@@ -2423,6 +2474,8 @@
   function sjekkDuplikat(input) {
     var tekst    = input.value.trim().toLowerCase();
     var advarsel = document.getElementById('duplikat-advarsel');
+    // Nullstill grønn bekreftelse fra forrige innlegging når brukeren skriver
+    advarsel.classList.remove('info');
     if (tekst.length < 2) { advarsel.classList.remove('synlig'); input.classList.remove('duplikat-felt'); return; }
     // Hvilken kategori hører teksten til? 'diverse' = ukjent (typo eller uvanlig vare).
     // For ukjente ord tillater vi lignende-match for å fange typo-er.
