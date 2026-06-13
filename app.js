@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v42-blyant-navn';
+  var APP_VERSJON = 'matplan-v43-en-forbokstav';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -3843,13 +3843,8 @@
     var sirkel = document.getElementById('profil-sirkel');
     if (!sirkel) return;
     var displayName = egetVisningsnavn() || '?';
-    // Beregn initialer fra første og siste navn
-    var navnDeler = displayName.trim().split(/\s+/);
-    var initialer = (navnDeler[0][0] || '?');
-    if (navnDeler.length > 1) {
-      initialer += navnDeler[navnDeler.length - 1][0];
-    }
-    initialer = initialer.toUpperCase();
+    // Kun første bokstav i sirkelen – holder den ren også for folk med mange navn
+    var initialer = (displayName.trim()[0] || '?').toUpperCase();
     if (bruker.photoURL) {
       sirkel.style.backgroundImage = "url('" + bruker.photoURL + "')";
       sirkel.textContent = '';
