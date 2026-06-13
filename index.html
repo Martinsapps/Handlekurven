@@ -140,6 +140,7 @@
           <div class="profil-navn" id="profil-navn">—</div>
           <div class="profil-email" id="profil-email">—</div>
         </div>
+        <button class="profil-handling" onclick="åpneEndreNavn()">✏️ Endre navn</button>
         <div class="profil-husstander" id="profil-husstander">
           <!-- Bygges dynamisk: liste over husstander brukeren er medlem av,
                eller "Opprett/Bli med"-knapper hvis ingen -->
@@ -384,6 +385,24 @@
     <div class="husstand-knapper">
       <button class="husstand-avbryt" id="husstand-forlat-knapp" onclick="forlatFraHusstandModal()">🚪 Forlat husstand</button>
       <button class="husstand-bekreft" onclick="lukkHusstandModal()" style="margin-left:auto">Ferdig</button>
+    </div>
+  </div>
+</div>
+
+<div class="husstand-overlay" id="endre-navn-overlay">
+  <div class="husstand-modal">
+    <button class="modal-lukk-x" onclick="lukkEndreNavn()" title="Lukk">×</button>
+    <h2>✏️ Endre visningsnavn</h2>
+    <p class="husstand-intro">Navnet vises i profilen din og til de andre i husstandene dine.</p>
+    <div class="husstand-felt">
+      <label for="endre-navn-input">Visningsnavn</label>
+      <input type="text" id="endre-navn-input" maxlength="40" placeholder="Navnet ditt"
+        onkeydown="if(event.key==='Enter')lagreVisningsnavn()">
+    </div>
+    <div class="husstand-feilmelding" id="endre-navn-feil"></div>
+    <div class="husstand-knapper">
+      <button class="husstand-avbryt" onclick="lukkEndreNavn()">Avbryt</button>
+      <button class="husstand-bekreft" onclick="lagreVisningsnavn()">Lagre</button>
     </div>
   </div>
 </div>

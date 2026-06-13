@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v39-duplikat-tillat';
+  var APP_VERSJON = 'matplan-v40-endre-visningsnavn';
   var valgtTilbakemeldingType = 'feil';
 
   function åpneTilbakemeldingModal(forhåndsType, forhåndsMelding) {
@@ -3033,6 +3033,15 @@
     database.ref(brukerSti('historikk')).on('value', function(snap) {
       setHistorikkForKontekst('personlig', snap.val());
     });
+
+    // Lytt på egendefinert visningsnavn. Oppdaterer profil-sirkelen og re-publiserer
+    // navnet i alle husstander (dekker både navneendring og kapp-løp mot
+    // husstand-lytteren ved innlogging).
+    database.ref(brukerSti('profil/navn')).on('value', function(snap) {
+      egetProfilNavn = snap.val() || null;
+      tegnProfilSirkel();
+      republiserAlleMedlemsnavn();
+    });
   }
 
   // ==============================
@@ -3040,6 +3049,16 @@
   // ==============================
   // Aktuell innlogget bruker (firebase.User-objekt) - null hvis ikke innlogget
   var bruker = null;
+
+  // Brukerens egendefinerte visningsnavn (brukere/{uid}/profil/navn). Lastes ved
+  // innlogging og overstyrer Google-navnet, slik at en navneendring er varig og
+  // ikke blir skrevet over neste gang Google leverer displayName.
+  var egetProfilNavn = null;
+  function egetVisningsnavn() {
+    if (egetProfilNavn && egetProfilNavn.trim()) return egetProfilNavn.trim();
+    if (bruker) return bruker.displayName || bruker.email || '';
+    return '';
+  }
 
   // Returnerer Firebase-sti for nåværende bruker. Brukes overalt der vi tidligere
   // skrev til globale paths som 'lister-meta', 'lister/{id}', 'egne-kategorier'.
@@ -3400,7 +3419,7 @@
 
     Object.keys(husstand.medlemmer).forEach(function(uid) {
       var visningsnavn = navnMap[uid] ||
-        (uid === minUid ? (bruker.displayName || bruker.email || 'Deg') : 'Medlem');
+        (uid === minUid ? (egetVisningsnavn() || 'Deg') : 'Medlem');
 
       var rad = document.createElement('div');
       rad.className = 'husstand-medlem-rad';
@@ -3490,13 +3509,18 @@
   // navn (ikke bare uid). Skriver kun ved endring for å spare writes.
   function publiserMedlemsnavn(husstandId) {
     if (!database || !bruker) return;
-    var navn = bruker.displayName || bruker.email || 'Medlem';
+    var navn = egetVisningsnavn() || 'Medlem';
     var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
     var eksisterende = husstand && husstand.medlemsnavn ? husstand.medlemsnavn[bruker.uid] : undefined;
     if (eksisterende === navn) return;
     database.ref('husstander/' + husstandId + '/medlemsnavn/' + bruker.uid).set(navn).catch(function(err) {
       loggFeil('Publiser medlemsnavn: ' + err.message, 'husstand', '');
     });
+  }
+
+  // Re-publiserer eget navn i alle husstander – kalles når visningsnavnet endres.
+  function republiserAlleMedlemsnavn() {
+    mineHusstander.forEach(function(h) { publiserMedlemsnavn(h.id); });
   }
 
   // Reagerer på endringer i en husstands medlemsliste. Hvis brukeren selv ikke
@@ -3719,6 +3743,7 @@
         handleHistorikkByKontekst = { 'personlig': {} };
         basisVarer = [];
         mineHusstander = [];
+        egetProfilNavn = null;
         // localStorage holder cache - tømmes nå så ny bruker får friskt grunnlag
         localStorage.removeItem('matplan-lister');
         localStorage.removeItem('matplan-egne-kategorier');
@@ -3797,7 +3822,7 @@
     if (!bruker) return;
     var sirkel = document.getElementById('profil-sirkel');
     if (!sirkel) return;
-    var displayName = bruker.displayName || bruker.email || '?';
+    var displayName = egetVisningsnavn() || '?';
     // Beregn initialer fra første og siste navn
     var navnDeler = displayName.trim().split(/\s+/);
     var initialer = (navnDeler[0][0] || '?');
@@ -3827,6 +3852,48 @@
   function lukkProfilDropdown() {
     var dd = document.getElementById('profil-dropdown');
     if (dd) dd.classList.remove('synlig');
+  }
+
+  // ==============================
+  // ENDRE VISNINGSNAVN
+  // ==============================
+  function åpneEndreNavn() {
+    lukkProfilDropdown();
+    var input = document.getElementById('endre-navn-input');
+    var feilEl = document.getElementById('endre-navn-feil');
+    if (feilEl) feilEl.textContent = '';
+    if (input) input.value = egetVisningsnavn();
+    document.getElementById('endre-navn-overlay').classList.add('synlig');
+    setTimeout(function() { if (input) { input.focus(); input.select(); } }, 100);
+  }
+  function lukkEndreNavn() {
+    document.getElementById('endre-navn-overlay').classList.remove('synlig');
+  }
+  function lagreVisningsnavn() {
+    var input  = document.getElementById('endre-navn-input');
+    var feilEl = document.getElementById('endre-navn-feil');
+    var navn   = input.value.trim();
+    if (!navn) { feilEl.textContent = 'Navnet kan ikke være tomt.'; return; }
+    if (navn.length > 40) { feilEl.textContent = 'Maks 40 tegn.'; return; }
+    if (!bruker || !database) return;
+    feilEl.textContent = '';
+
+    // Lagre to steder: vår egen sti (varig, overstyrer Google) + Auth-profilen.
+    // updateProfile feiler ikke flyten hvis den skulle slå feil – egen sti er
+    // kilden vi faktisk leser fra via egetVisningsnavn().
+    var oppgaver = [ database.ref(brukerSti('profil/navn')).set(navn) ];
+    if (bruker.updateProfile) {
+      oppgaver.push(bruker.updateProfile({ displayName: navn }).catch(function() {}));
+    }
+    Promise.all(oppgaver).then(function() {
+      egetProfilNavn = navn;
+      tegnProfilSirkel();
+      republiserAlleMedlemsnavn();
+      lukkEndreNavn();
+    }).catch(function(err) {
+      feilEl.textContent = 'Kunne ikke lagre. Prøv igjen.';
+      loggFeil('Endre navn: ' + err.message, 'auth', '');
+    });
   }
 
   // Lukk profil-dropdown når man klikker utenfor
