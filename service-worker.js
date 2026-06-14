@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v45-fjern-utdatert-migrasjon';
+const CACHE_NAME = 'matplan-v46-eierskap-ved-forlat';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {

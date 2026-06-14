@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v45-fjern-utdatert-migrasjon';
+  var APP_VERSJON = 'matplan-v46-eierskap-ved-forlat';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -3232,15 +3232,29 @@
         return Promise.all([
           database.ref('husstander/' + husstandId + '/tomtSiden').set(nu),
           database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).remove(),
+          database.ref('husstander/' + husstandId + '/medlemsnavn/' + bruker.uid).remove(),
           database.ref(brukerSti('husstander/' + husstandId)).remove()
         ]).then(function() { return kode; });
       });
     }
-    // Normalt: bare fjern medlemskap. Husstand + data forblir for andre medlemmer.
-    return Promise.all([
-      database.ref('husstander/' + husstandId + '/medlemmer/' + bruker.uid).remove(),
-      database.ref(brukerSti('husstander/' + husstandId)).remove()
-    ]);
+    // Normalt: fjern medlemskap (+ publisert navn). Husstand + data forblir for
+    // andre medlemmer. Var jeg eier, overføres eierskapet til et gjenværende
+    // medlem så husstanden aldri blir eierløs (samme hybrid-logikk som ved
+    // kontosletting).
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    var oppdateringer = {};
+    oppdateringer['husstander/' + husstandId + '/medlemmer/' + bruker.uid] = null;
+    oppdateringer['husstander/' + husstandId + '/medlemsnavn/' + bruker.uid] = null;
+    oppdateringer[brukerSti('husstander/' + husstandId)] = null;
+    if (husstand && husstand.opprettetAv === bruker.uid) {
+      var andre = Object.keys(husstand.medlemmer || {}).filter(function(m) {
+        return m !== bruker.uid;
+      });
+      if (andre.length > 0) {
+        oppdateringer['husstander/' + husstandId + '/opprettetAv'] = andre[0];
+      }
+    }
+    return database.ref().update(oppdateringer);
   }
 
   function genererInvitasjonskode(husstandId) {
