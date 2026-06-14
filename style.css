@@ -721,7 +721,21 @@
       border-radius: 8px; flex-shrink: 0; line-height: 1;
     }
     .husstand-medlem-fjern:hover { color: var(--red); background: var(--red-lt); }
+    .husstand-medlem-eier {
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; padding: 2px 6px; border-radius: 8px; flex-shrink: 0; line-height: 1;
+    }
+    .husstand-medlem-eier:hover { background: var(--green-lt); }
     .husstand-medlem-tom { font-size: 13px; color: var(--muted); font-style: italic; padding: 6px 2px; }
+
+    /* VELG NY EIER – valgbare medlemsrader */
+    .velg-eier-rad {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 9px 12px; border-radius: 14px; cursor: pointer; text-align: left;
+      background: var(--bg); border: 1.5px solid var(--border); color: var(--text);
+    }
+    .velg-eier-rad:hover { border-color: var(--green); }
+    .velg-eier-rad.valgt { border-color: var(--green); background: var(--green-lt); }
 
     /* TILBAKEMELDING – flytende knapp og modal */
     .tilbakemelding-knapp {

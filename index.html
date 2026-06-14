@@ -410,6 +410,19 @@
   </div>
 </div>
 
+<div class="husstand-overlay" id="velg-eier-overlay">
+  <div class="husstand-modal">
+    <button class="modal-lukk-x" onclick="lukkVelgEier()" title="Lukk">×</button>
+    <h2>👑 Velg ny eier</h2>
+    <p class="husstand-intro">Du forlater husstanden. Velg hvem som skal overta som eier.</p>
+    <div id="velg-eier-liste" class="husstand-medlemmer-liste"></div>
+    <div class="husstand-knapper">
+      <button class="husstand-avbryt" onclick="lukkVelgEier()">Avbryt</button>
+      <button class="husstand-bekreft" id="velg-eier-bekreft" onclick="bekreftVelgEier()" disabled>Forlat og overfør</button>
+    </div>
+  </div>
+</div>
+
 <!-- TILBAKEMELDING MODAL -->
 <div class="tilbakemelding-overlay" id="tilbakemelding-overlay">
   <div class="tilbakemelding-modal">
@@ -448,7 +461,7 @@
      ved avvik tvinger app.js én reload for å hente ferskt index.html (iOS
      standalone-PWA kan ellers henge på et gammelt skall). Bump sammen med
      APP_VERSJON + CACHE_NAME. -->
-<script>window.HTML_VERSJON = 'matplan-v46-eierskap-ved-forlat';</script>
+<script>window.HTML_VERSJON = 'matplan-v47-velg-eier';</script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v46-eierskap-ved-forlat';
+  var APP_VERSJON = 'matplan-v47-velg-eier';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -3134,6 +3134,7 @@
           database.ref('husstander/' + hid + '/historikk').off();
           database.ref('husstander/' + hid + '/medlemmer').off();
           database.ref('husstander/' + hid + '/medlemsnavn').off();
+          database.ref('husstander/' + hid + '/opprettetAv').off();
           delete husstandListenereAktive[hid];
           delete egneKategorierByKontekst[hid];
           delete handleHistorikkByKontekst[hid];
@@ -3187,6 +3188,12 @@
               if (hh) hh.medlemsnavn = s2.val() || {};
               if (aktivHusstandModalId === h.id && hh) tegnHusstandMedlemmer(hh);
             });
+            // Eierskap: oppdater modalens eier-avhengige UI live ved eierskifte
+            database.ref('husstander/' + h.id + '/opprettetAv').on('value', function(s2) {
+              var hh = mineHusstander.find(function(x) { return x.id === h.id; });
+              if (hh) hh.opprettetAv = s2.val();
+              if (aktivHusstandModalId === h.id && hh) oppdaterHusstandModalEierUI(hh);
+            });
             // Publiser eget visningsnavn så andre medlemmer ser navnet
             publiserMedlemsnavn(h.id);
           }
@@ -3218,7 +3225,7 @@
   // Antall millisekunder for 4 ukers angrefrist
   var FIRE_UKER_MS = 4 * 7 * 24 * 60 * 60 * 1000;
 
-  function forlatHusstand(husstandId, somSiste) {
+  function forlatHusstand(husstandId, somSiste, nyEierId) {
     if (!database || !bruker) return Promise.reject(new Error('Ikke innlogget'));
     if (somSiste) {
       // Siste medlem: marker husstanden som tom og fjern medlemskap.
@@ -3251,7 +3258,9 @@
         return m !== bruker.uid;
       });
       if (andre.length > 0) {
-        oppdateringer['husstander/' + husstandId + '/opprettetAv'] = andre[0];
+        // Bruk eierens valg hvis gyldig, ellers første gjenværende medlem.
+        var valgtEier = (nyEierId && andre.indexOf(nyEierId) !== -1) ? nyEierId : andre[0];
+        oppdateringer['husstander/' + husstandId + '/opprettetAv'] = valgtEier;
       }
     }
     return database.ref().update(oppdateringer);
@@ -3399,20 +3408,11 @@
     var tittelEl = document.getElementById('husstand-modal-tittel');
     if (tittelEl) tittelEl.textContent = '🏠 ' + (husstand ? husstand.navn : 'Husstand');
 
-    // Medlemsliste
-    tegnHusstandMedlemmer(husstand);
+    // Medlemsliste + eier-avhengig UI (bytt kode, eier-info, gjør-til-eier/fjern)
+    oppdaterHusstandModalEierUI(husstand);
 
     var kodeEl = document.getElementById('invitasjonskode-vis');
     if (kodeEl) kodeEl.textContent = 'Genererer…';
-
-    // Vis "Bytt kode"-knappen + fjern-knapper kun for den som opprettet husstanden.
-    // Sikkerhets-poenget: hvis noen lekker en kode, kan kun eieren fjerne
-    // uvedkommende og bytte koden.
-    var byttKnapp = document.getElementById('invitasjonskode-bytt-knapp');
-    var eierInfo = document.getElementById('invitasjonskode-eier-info');
-    var erEier = husstand && bruker && husstand.opprettetAv === bruker.uid;
-    if (byttKnapp) byttKnapp.style.display = erEier ? '' : 'none';
-    if (eierInfo) eierInfo.style.display = erEier ? '' : 'none';
 
     document.getElementById('invitasjonskode-overlay').classList.add('synlig');
     genererInvitasjonskode(husstandId).then(function(kode) {
@@ -3422,6 +3422,20 @@
       loggFeil('Generer kode: ' + err.message, 'husstand', '');
     });
   }
+
+  // Oppdaterer de delene av husstand-modalen som avhenger av hvem som er eier:
+  // medlemslisten (med gjør-til-eier/fjern-knapper), bytt-kode-knappen og
+  // eier-infoteksten. Vises kun for den som er eier (opprettetAv). Kalles både
+  // ved åpning og live når opprettetAv endres.
+  function oppdaterHusstandModalEierUI(husstand) {
+    var erEier = husstand && bruker && husstand.opprettetAv === bruker.uid;
+    var byttKnapp = document.getElementById('invitasjonskode-bytt-knapp');
+    var eierInfo = document.getElementById('invitasjonskode-eier-info');
+    if (byttKnapp) byttKnapp.style.display = erEier ? '' : 'none';
+    if (eierInfo) eierInfo.style.display = erEier ? '' : 'none';
+    tegnHusstandMedlemmer(husstand);
+  }
+
   function lukkHusstandModal() {
     document.getElementById('invitasjonskode-overlay').classList.remove('synlig');
     aktivHusstandModalId = null;
@@ -3475,8 +3489,16 @@
         rad.appendChild(merkeEier);
       }
 
-      // Eieren kan fjerne andre (ikke seg selv – bruk "Forlat husstand" for det)
+      // Eieren kan gjøre andre til eier eller fjerne dem (ikke seg selv –
+      // egen utmelding går via "Forlat husstand").
       if (erEier && uid !== minUid) {
+        var gjørEier = document.createElement('button');
+        gjørEier.className = 'husstand-medlem-eier';
+        gjørEier.title = 'Gjør til eier';
+        gjørEier.textContent = '⭐';
+        gjørEier.onclick = function() { bekreftGjørTilEier(husstand.id, uid, visningsnavn); };
+        rad.appendChild(gjørEier);
+
         var fjern = document.createElement('button');
         fjern.className = 'husstand-medlem-fjern';
         fjern.title = 'Fjern fra husstand';
@@ -3520,6 +3542,33 @@
       tegnProfilDropdown();
     }).catch(function(err) {
       loggFeil('Fjern medlem: ' + err.message, 'husstand', '');
+    });
+  }
+
+  function bekreftGjørTilEier(husstandId, uid, navn) {
+    visBekreft(
+      'Gjøre ' + navn + ' til eier av husstanden? Du mister selv eier-rettighetene ' +
+      '(bytte kode og fjerne medlemmer), men blir værende som medlem.',
+      function() { gjørTilEier(husstandId, uid); },
+      'Ja, gjør til eier'
+    );
+  }
+
+  // Eieren overfører eierskapet til et annet medlem (opprettetAv). Den nye eieren
+  // ser sine nye rettigheter live via opprettetAv-lytteren.
+  function gjørTilEier(husstandId, uid) {
+    if (!database || !bruker) return;
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    if (!husstand || husstand.opprettetAv !== bruker.uid) {
+      loggFeil('Gjør til eier nektet: ikke eier', 'husstand', '');
+      return;
+    }
+    if (!husstand.medlemmer || !husstand.medlemmer[uid]) return; // må være medlem
+    database.ref('husstander/' + husstandId + '/opprettetAv').set(uid).then(function() {
+      husstand.opprettetAv = uid;
+      if (aktivHusstandModalId === husstandId) oppdaterHusstandModalEierUI(husstand);
+    }).catch(function(err) {
+      loggFeil('Gjør til eier: ' + err.message, 'husstand', '');
     });
   }
 
@@ -3643,6 +3692,13 @@
         }
       );
     } else {
+      // Er du eier og det er flere medlemmer å velge mellom, skal du få velge
+      // hvem som overtar eierskapet (i stedet for automatisk valg).
+      var erEier = husstand && bruker && husstand.opprettetAv === bruker.uid;
+      if (erEier && (medlemAntall - 1) >= 2) {
+        åpneVelgEier(husstandId, husstandNavn);
+        return;
+      }
       visBekreft(
         'Forlate husstand «' + husstandNavn + '»? ' +
         'Du vil ikke lenger ha tilgang til delte lister i denne husstanden. ' +
@@ -3654,6 +3710,71 @@
         }
       );
     }
+  }
+
+  // ==============================
+  // VELG NY EIER (når eier forlater og det er flere å velge mellom)
+  // ==============================
+  var aktivVelgEierHusstandId = null;
+  var aktivVelgEierNavn = '';
+  var valgtNyEierId = null;
+
+  function åpneVelgEier(husstandId, husstandNavn) {
+    var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
+    if (!husstand) return;
+    aktivVelgEierHusstandId = husstandId;
+    aktivVelgEierNavn = husstandNavn;
+    valgtNyEierId = null;
+
+    var liste = document.getElementById('velg-eier-liste');
+    liste.innerHTML = '';
+    var navnMap = husstand.medlemsnavn || {};
+    Object.keys(husstand.medlemmer || {}).forEach(function(uid) {
+      if (uid === bruker.uid) return; // ikke deg selv
+      var navn = navnMap[uid] || 'Medlem';
+      var rad = document.createElement('button');
+      rad.type = 'button';
+      rad.className = 'velg-eier-rad';
+
+      var avatar = document.createElement('span');
+      avatar.className = 'husstand-medlem-avatar';
+      avatar.textContent = (navn.trim()[0] || '?').toUpperCase();
+      rad.appendChild(avatar);
+
+      var navnEl = document.createElement('span');
+      navnEl.className = 'husstand-medlem-navn';
+      navnEl.textContent = navn;
+      rad.appendChild(navnEl);
+
+      rad.onclick = function() {
+        valgtNyEierId = uid;
+        liste.querySelectorAll('.velg-eier-rad').forEach(function(r) { r.classList.remove('valgt'); });
+        rad.classList.add('valgt');
+        var b = document.getElementById('velg-eier-bekreft');
+        if (b) b.disabled = false;
+      };
+      liste.appendChild(rad);
+    });
+
+    var bekreft = document.getElementById('velg-eier-bekreft');
+    if (bekreft) bekreft.disabled = true;
+    document.getElementById('velg-eier-overlay').classList.add('synlig');
+  }
+
+  function lukkVelgEier() {
+    document.getElementById('velg-eier-overlay').classList.remove('synlig');
+    aktivVelgEierHusstandId = null;
+    valgtNyEierId = null;
+  }
+
+  function bekreftVelgEier() {
+    var husstandId = aktivVelgEierHusstandId;
+    var nyEier = valgtNyEierId;
+    if (!husstandId || !nyEier) return;
+    lukkVelgEier();
+    forlatHusstand(husstandId, false, nyEier).catch(function(err) {
+      loggFeil('Forlat (velg eier): ' + err.message, 'husstand', '');
+    });
   }
 
   function visGjenopprettingsKode(kode, husstandNavn) {
