@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v43-en-forbokstav';
+  var APP_VERSJON = 'matplan-v44-slett-konto';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -3723,11 +3723,20 @@
       loggFeil('Auth: firebase.auth ikke lastet', 'auth', '');
       return;
     }
-    // Håndter retur fra Google etter signInWithRedirect
+    // Håndter retur fra Google etter signInWithRedirect / reauthenticateWithRedirect
     firebase.auth().getRedirectResult().then(function(result) {
-      // Hvis result.user finnes betyr det at brukeren nettopp logget inn via redirect.
-      // onAuthStateChanged håndterer det videre - vi trenger ikke gjøre noe ekstra her.
+      // Returnerte vi fra en re-auth for kontosletting? (flagg satt før redirect,
+      // med tidsstempel slik at et forlatt/avbrutt forsøk ikke trigger senere)
+      var flagg = localStorage.getItem('matplan-slett-konto');
+      if (result && result.user && flagg &&
+          (Date.now() - Number(flagg)) < 10 * 60 * 1000) {
+        utførSletting();
+      } else if (flagg) {
+        localStorage.removeItem('matplan-slett-konto');
+      }
+      // Ellers: vanlig innlogging via redirect – onAuthStateChanged håndterer resten.
     }).catch(function(err) {
+      localStorage.removeItem('matplan-slett-konto');
       var statusEl = document.getElementById('login-status');
       if (statusEl) statusEl.textContent = 'Innlogging feilet: ' + err.message;
       loggFeil('getRedirectResult: ' + err.message, 'auth', '');
@@ -3814,6 +3823,93 @@
     });
     // onAuthStateChanged tar seg av UI-oppdatering
     lukkProfilDropdown();
+  }
+
+  // ==============================
+  // SLETT KONTO
+  // ==============================
+  function bekreftSlettKonto() {
+    lukkProfilDropdown();
+    visBekreft(
+      'Slette kontoen din permanent? Alle dine personlige lister, kategorier og ' +
+      'historikk slettes for godt. Husstander der andre fortsatt er medlem ' +
+      'beholdes (eierskap overføres ved behov); husstander der du er siste medlem ' +
+      'slettes. Dette kan ikke angres.',
+      function() { startSlettKonto(); },
+      'Slett kontoen min'
+    );
+  }
+
+  // Firebase krever "nylig innlogging" for å slette en konto. Vi re-autentiserer
+  // derfor først. Popup på desktop; iOS standalone-PWA faller til redirect, og
+  // slettingen fullføres når appen lastes på nytt (se getRedirectResult i initAuth).
+  function startSlettKonto() {
+    var bruker0 = firebase.auth && firebase.auth().currentUser;
+    if (!bruker0 || !database) return;
+    var provider = new firebase.auth.GoogleAuthProvider();
+    bruker0.reauthenticateWithPopup(provider).then(function() {
+      utførSletting();
+    }).catch(function(err) {
+      if (err.code === 'auth/popup-blocked' ||
+          err.code === 'auth/popup-closed-by-user' ||
+          err.code === 'auth/cancelled-popup-request' ||
+          err.code === 'auth/operation-not-supported-in-this-environment') {
+        // Redirect-vei: marker at sletting pågår (med tidsstempel mot stale flagg),
+        // fullføres når appen kommer tilbake fra Google.
+        localStorage.setItem('matplan-slett-konto', String(Date.now()));
+        bruker0.reauthenticateWithRedirect(provider).catch(function(e2) {
+          localStorage.removeItem('matplan-slett-konto');
+          loggFeil('reauth redirect: ' + e2.message, 'auth', '');
+        });
+      } else {
+        loggFeil('reauth popup: ' + err.message, 'auth', '');
+      }
+    });
+  }
+
+  // Selve slettingen – kjøres etter bekreftet re-autentisering. Rydder husstander
+  // (overfør eierskap når andre er igjen / slett tomme), sletter alle personlige
+  // data, og til slutt selve Auth-kontoen. onAuthStateChanged(null) tar UI-en til
+  // login-skjermen.
+  function utførSletting() {
+    localStorage.removeItem('matplan-slett-konto'); // kjør kun én gang
+    var bruker0 = firebase.auth && firebase.auth().currentUser;
+    if (!bruker0 || !database) return;
+    var uid = bruker0.uid;
+
+    database.ref('brukere/' + uid + '/husstander').once('value').then(function(snap) {
+      var hids = Object.keys(snap.val() || {});
+      return Promise.all(hids.map(function(hid) {
+        return database.ref('husstander/' + hid).once('value').then(function(s) {
+          return { hid: hid, data: s.val() };
+        });
+      }));
+    }).then(function(husstander) {
+      var upd = {};
+      husstander.forEach(function(h) {
+        if (!h.data) return;
+        var medlemmer = h.data.medlemmer || {};
+        var andre = Object.keys(medlemmer).filter(function(m) { return m !== uid; });
+        if (andre.length === 0) {
+          // Siste medlem → slett hele husstanden (ingen angrefrist; kontoen er borte)
+          upd['husstander/' + h.hid] = null;
+          if (h.data.kode) upd['invitasjonskoder/' + h.data.kode] = null;
+        } else {
+          // Andre er igjen → fjern meg, og overfør eierskap hvis jeg var eier
+          upd['husstander/' + h.hid + '/medlemmer/' + uid] = null;
+          upd['husstander/' + h.hid + '/medlemsnavn/' + uid] = null;
+          if (h.data.opprettetAv === uid) {
+            upd['husstander/' + h.hid + '/opprettetAv'] = andre[0];
+          }
+        }
+      });
+      upd['brukere/' + uid] = null;
+      return database.ref().update(upd);
+    }).then(function() {
+      return bruker0.delete();
+    }).catch(function(err) {
+      loggFeil('Slett konto: ' + err.message, 'auth', '');
+    });
   }
 
   function visLoginSkjerm() {
