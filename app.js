@@ -1519,7 +1519,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v44-slett-konto';
+  var APP_VERSJON = 'matplan-v45-fjern-utdatert-migrasjon';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -3098,11 +3098,6 @@
     return 'husstander/' + kontekst + (sub ? '/' + sub : '');
   }
 
-  // E-post på brukeren hvis eksisterende globale data skal migreres til kontoen.
-  // Engangsoperasjon - sjekkes ved hver login, men gjør ingenting hvis data er
-  // allerede migrert. Trygt å fjerne etter at migrasjonen er bekreftet ferdig.
-  var MIGRASJON_TARGET_EMAIL = 'mnygaard1995@gmail.com';
-
   // ==============================
   // HUSSTAND (delt mellom medlemmer)
   // ==============================
@@ -3679,42 +3674,20 @@
     }
   }
 
+  // Sørger for at brukernoden finnes med basisinfo ved innlogging. (Den gamle
+  // pre-auth-migrasjonen som leste globale rot-stier er fjernet: rot-stiene er
+  // utilgjengelige under gjeldende sikkerhetsregler og dataene er for lengst
+  // migrert. Forsøk på å lese dem ga bare permission_denied ved fersk innlogging.)
   function migrerGlobaltTilBrukerOmNodvendig() {
     if (!bruker || !database) return Promise.resolve();
-    if (bruker.email !== MIGRASJON_TARGET_EMAIL) {
-      // Annen bruker - sørg for at brukernoden eksisterer med basisinfo
-      return database.ref('brukere/' + bruker.uid).once('value').then(function(snap) {
-        if (!snap.exists()) {
-          return database.ref('brukere/' + bruker.uid).set({
-            opprettet: Date.now(),
-            email: bruker.email,
-            navn: bruker.displayName || ''
-          });
-        }
-      });
-    }
-    // Migrasjons-target: sjekk om brukerdata allerede finnes
     return database.ref('brukere/' + bruker.uid).once('value').then(function(snap) {
-      if (snap.exists() && snap.val()['lister-meta']) {
-        // Allerede migrert eller har data
-        return;
-      }
-      // Les globale data og kopier til brukernoden
-      return Promise.all([
-        database.ref('lister-meta').once('value'),
-        database.ref('lister').once('value'),
-        database.ref('egne-kategorier').once('value')
-      ]).then(function(results) {
-        var nyData = {
+      if (!snap.exists()) {
+        return database.ref('brukere/' + bruker.uid).set({
           opprettet: Date.now(),
           email: bruker.email,
           navn: bruker.displayName || ''
-        };
-        if (results[0].val()) nyData['lister-meta'] = results[0].val();
-        if (results[1].val()) nyData.lister = results[1].val();
-        if (results[2].val()) nyData['egne-kategorier'] = results[2].val();
-        return database.ref('brukere/' + bruker.uid).set(nyData);
-      });
+        });
+      }
     });
   }
 
