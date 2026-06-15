@@ -363,11 +363,20 @@
     li.skjult { display: none; }
 
     .sjekk {
+      position: relative;
       width: 22px; height: 22px; border-radius: 50%;
       border: 2px solid #ccc; background: var(--surface);
       cursor: pointer; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       font-size: 12px; color: white; transition: all 0.15s;
+    }
+    /* Usynlig ~44px trykkflate rundt den 22px store sirkelen – lettere å treffe
+       enhånds i butikk (Apple HIG 44pt) uten å endre utseendet. Tekst/knapper
+       til høyre ligger oppå og tar sine egne trykk, så dette utvider effektivt
+       opp/ned/venstre inn i tom plass. */
+    .sjekk::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); width: 44px; height: 44px;
     }
     .sjekk.huket { background: #888; border-color: #888; }
 

@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v48-sync-datatap-fiks';
+const CACHE_NAME = 'matplan-v49-ux-p1-1-trykkflate';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {
