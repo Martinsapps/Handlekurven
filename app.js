@@ -522,7 +522,9 @@
     // Bytt til riktig handlehistorikk for konteksten (lærte forslag)
     bytteHistorikkKontekst(aktivListeKontekst);
 
-    // Last inn data for denne listen
+    // Last inn data for denne listen (fra lokal cache – kan være tom/utdatert
+    // til skyen har levert. Derfor markerer vi lista som ikke-hydrert ennå.)
+    aktivListeHydrert = false;
     lastInnListeData(id);
 
     // Koble Firebase til denne listen
@@ -540,12 +542,17 @@
     }
     aktivListeId = null;
     aktivListeKontekst = null;
+    aktivListeHydrert = false;
     document.getElementById('liste-container').style.display = 'none';
     document.getElementById('forside-container').style.display = 'block';
     tegnForside();
   }
 
   var aktivFirebaseLytter = null;
+  // True først når Firebase-lytteren har levert skyens versjon av den aktive
+  // lista (mens vi var tilkoblet). lagreAlt skriver IKKE til skyen før dette, så
+  // et tomt/utdatert øyeblikksbilde rett etter åpning aldri overskriver andres data.
+  var aktivListeHydrert = false;
 
   function lastInnListeData(id) {
     // Last inn varer
@@ -575,21 +582,27 @@
     if (aktivFirebaseLytter) {
       database.ref(kontekstSti(aktivListeKontekst, 'lister/' + (aktivListeId || id) + '/varer')).off('value', aktivFirebaseLytter);
     }
+    var kontekst = aktivListeKontekst;
     aktivFirebaseLytter = function(snap) {
       // snap.val() er null når listen er helt tom (Firebase pruner tomme verdier).
       // Vi må fortsatt oppdatere UI for å reflektere tømming fra annen enhet.
+      // Et tilkoblet snapshot betyr at vi nå kjenner skyens versjon → hydrert.
+      if (erKoblet) aktivListeHydrert = true;
       var data = snap.val() || {};
-      if (offlineKø.filter(function(e) { return e.type === 'handleliste'; }).length === 0) {
+      // Ikke overskriv skjermen hvis vi har en ventende, usynket endring for nettopp
+      // DENNE lista (vår lokale versjon er da nyere). Ventende endringer for andre
+      // lister skal ikke blokkere oppdatering her.
+      if (!ventendeForListe('handleliste', kontekst, id)) {
         migrerVarerData(data);
         byggListeFraData(data);
         localStorage.setItem('matplan-varer-' + id, JSON.stringify(data));
       }
     };
-    database.ref(kontekstSti(aktivListeKontekst, 'lister/' + id + '/varer')).on('value', aktivFirebaseLytter);
-    database.ref(kontekstSti(aktivListeKontekst, 'lister/' + id + '/basis')).on('value', function(snap) {
+    database.ref(kontekstSti(kontekst, 'lister/' + id + '/varer')).on('value', aktivFirebaseLytter);
+    database.ref(kontekstSti(kontekst, 'lister/' + id + '/basis')).on('value', function(snap) {
       // Samme null-håndtering for basis: en tom basisliste kommer som null fra Firebase.
       var data = snap.val();
-      if (offlineKø.filter(function(e) { return e.type === 'basisliste'; }).length === 0) {
+      if (!ventendeForListe('basisliste', kontekst, id)) {
         basisVarer = data || [];
         migrerBasisData(basisVarer);
         localStorage.setItem('matplan-basis-' + id, JSON.stringify(basisVarer));
@@ -1519,7 +1532,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v47-velg-eier';
+  var APP_VERSJON = 'matplan-v48-sync-datatap-fiks';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -2860,13 +2873,24 @@
     localStorage.setItem('matplan-offline-kø', JSON.stringify(offlineKø));
   }
 
-  function leggTilOfflineKø(type, data) {
-    // Erstatt eventuell tidligere oppføring av samme type – bare siste versjon trengs
-    offlineKø = offlineKø.filter(function(e) { return e.type !== type; });
-    offlineKø.push({ type: type, data: data, tid: Date.now() });
+  function leggTilOfflineKø(type, data, kontekst, listeId) {
+    // Erstatt tidligere oppføring for SAMME liste+type – bare siste versjon trengs.
+    // (Køen kan nå holde endringer for flere lister samtidig, så vi matcher på
+    // liste-identitet, ikke bare type.)
+    offlineKø = offlineKø.filter(function(e) {
+      return !(e.type === type && e.kontekst === kontekst && e.listeId === listeId);
+    });
+    offlineKø.push({ type: type, data: data, kontekst: kontekst, listeId: listeId, tid: Date.now() });
     harUsynkedeEndringer = true;
     lagreOfflineKø();
     oppdaterSyncStatus();
+  }
+
+  // Finnes det en usynket endring i køen for en bestemt liste+type?
+  function ventendeForListe(type, kontekst, listeId) {
+    return offlineKø.some(function(e) {
+      return e.type === type && e.kontekst === kontekst && e.listeId === listeId;
+    });
   }
 
   function tømOfflineKø() {
@@ -2880,20 +2904,20 @@
     if (!database || !erKoblet || offlineKø.length === 0 || !bruker) return;
     var kø = offlineKø.slice();
     kø.forEach(function(entry) {
-      if (entry.type === 'handleliste') {
-        database.ref(kontekstSti(aktivListeKontekst, 'lister/' + (aktivListeId || 'default') + '/varer')).set(entry.data).then(function() {
-          offlineKø = offlineKø.filter(function(e) { return e.type !== 'handleliste'; });
-          lagreOfflineKø();
-          oppdaterSyncStatus();
-        }).catch(function(err) { loggFeil('Sync feilet: ' + err.message, 'firebase', ''); });
+      // Gamle oppføringer (fra før køen fikk liste-identitet) forkastes trygt –
+      // bedre enn å gjette og skrive dem til feil liste.
+      if (!entry.listeId) {
+        offlineKø = offlineKø.filter(function(e) { return e !== entry; });
+        lagreOfflineKø();
+        oppdaterSyncStatus();
+        return;
       }
-      if (entry.type === 'basisliste') {
-        database.ref(kontekstSti(aktivListeKontekst, 'lister/' + (aktivListeId || 'default') + '/basis')).set(entry.data).then(function() {
-          offlineKø = offlineKø.filter(function(e) { return e.type !== 'basisliste'; });
-          lagreOfflineKø();
-          oppdaterSyncStatus();
-        }).catch(function(err) { loggFeil('Sync feilet: ' + err.message, 'firebase', ''); });
-      }
+      var substi = entry.type === 'basisliste' ? '/basis' : '/varer';
+      database.ref(kontekstSti(entry.kontekst, 'lister/' + entry.listeId + substi)).set(entry.data).then(function() {
+        offlineKø = offlineKø.filter(function(e) { return e !== entry; });
+        lagreOfflineKø();
+        oppdaterSyncStatus();
+      }).catch(function(err) { loggFeil('Sync feilet: ' + err.message, 'firebase', ''); });
     });
   }
 
@@ -2930,18 +2954,25 @@
     // egneKategorier lagres til kontekst-spesifikk localStorage-nøkkel via
     // lagreEgneKategorier(). lagreAlt skriver derfor ikke dette her lenger.
 
+    // VIKTIG (datatap-vern): ikke skriv hele lista til skyen før vi har lastet
+    // ned skyens versjon av nettopp DENNE lista i denne økten. Ellers kan et
+    // tomt/utdatert øyeblikksbilde – typisk rett etter åpning før nedlasting –
+    // overskrive andres data i en delt husstand. Lokalt er alt allerede lagret.
+    if (!aktivListeHydrert) return;
+
+    var kontekst = aktivListeKontekst, listeId = aktivListeId;
     if (erKoblet && database && bruker) {
-      database.ref(kontekstSti(aktivListeKontekst, 'lister/' + aktivListeId + '/varer')).set(data).catch(function(err) {
-        leggTilOfflineKø('handleliste', data);
+      database.ref(kontekstSti(kontekst, 'lister/' + listeId + '/varer')).set(data).catch(function(err) {
+        leggTilOfflineKø('handleliste', data, kontekst, listeId);
         loggFeil('Firebase lagringsfeil: ' + err.message, 'firebase', '');
       });
-      database.ref(kontekstSti(aktivListeKontekst, 'lister/' + aktivListeId + '/basis')).set(basisVarer).catch(function(err) {
-        leggTilOfflineKø('basisliste', basisVarer);
+      database.ref(kontekstSti(kontekst, 'lister/' + listeId + '/basis')).set(basisVarer).catch(function(err) {
+        leggTilOfflineKø('basisliste', basisVarer, kontekst, listeId);
         loggFeil('Firebase basisliste-feil: ' + err.message, 'firebase', '');
       });
     } else {
-      leggTilOfflineKø('handleliste', data);
-      leggTilOfflineKø('basisliste', basisVarer);
+      leggTilOfflineKø('handleliste', data, kontekst, listeId);
+      leggTilOfflineKø('basisliste', basisVarer, kontekst, listeId);
     }
 
     // Oppdater lister-meta med ny vare-telling så forsiden hos andre medlemmer
