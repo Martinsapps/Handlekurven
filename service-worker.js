@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v50-ux-p1-2-ingen-ios-zoom';
+const CACHE_NAME = 'matplan-v51-ux-p1-3-safe-area';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {
