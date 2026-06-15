@@ -200,7 +200,7 @@
     .basis-rediger-rad label { font-size: 11px; color: var(--muted); width: 56px; flex-shrink: 0; }
     .basis-rediger-panel input[type="number"] {
       width: 60px; padding: 5px 7px; border: 1.5px solid var(--border);
-      border-radius: 12px; font-size: 12px; text-align: center;
+      border-radius: 12px; font-size: 16px; text-align: center;
       outline: none; color: var(--text); background: var(--surface);
     }
     .basis-rediger-panel select {
@@ -209,7 +209,7 @@
     }
     .basis-rediger-panel input[type="text"] {
       flex: 1; padding: 5px 9px; border: 1.5px solid var(--border);
-      border-radius: 12px; font-size: 12px; color: var(--text);
+      border-radius: 12px; font-size: 16px; color: var(--text);
       background: var(--surface); outline: none;
     }
     .basis-rediger-lagre {
@@ -221,7 +221,7 @@
     .basis-input {
       flex: 1; min-width: 120px; padding: 8px 12px;
       border: 1.5px solid var(--green-bd); border-radius: 20px;
-      font-size: 14px; outline: none; color: var(--text); background: var(--surface);
+      font-size: 16px; outline: none; color: var(--text); background: var(--surface);
     }
     .basis-input:focus { border-color: var(--green); }
     .basis-kat-velg {
@@ -274,7 +274,7 @@
     .legg-til-rad1 input[type="text"] {
       width: 100%; padding: 11px 18px;
       border: 1.5px solid var(--border); border-radius: 24px;
-      font-size: 15px; outline: none; color: var(--text); background: var(--surface);
+      font-size: 16px; outline: none; color: var(--text); background: var(--surface);
       transition: border-color 0.15s;
     }
     .legg-til-rad1 input[type="text"]:focus { border-color: var(--green); }
@@ -294,7 +294,7 @@
       color: var(--text); outline: none; cursor: pointer;
     }
     .chip input[type="number"] {
-      width: 40px; text-align: center;
+      width: 40px; text-align: center; font-size: 16px;
       border-right: 1px solid var(--border); padding-right: 6px; margin-right: 2px;
     }
     .chip select { max-width: 150px; }
@@ -410,7 +410,7 @@
     .rediger-etikett { font-size: 12px; color: var(--muted); width: 70px; flex-shrink: 0; }
     .rediger-panel input[type="number"] {
       width: 64px; padding: 6px 8px; border: 1.5px solid var(--border);
-      border-radius: 14px; font-size: 13px; text-align: center;
+      border-radius: 14px; font-size: 16px; text-align: center;
       outline: none; color: var(--text); background: var(--surface);
     }
     .rediger-panel select {
@@ -419,7 +419,7 @@
     }
     .rediger-panel input[type="text"] {
       flex: 1; padding: 6px 10px; border: 1.5px solid var(--border);
-      border-radius: 14px; font-size: 13px; color: var(--text);
+      border-radius: 14px; font-size: 16px; color: var(--text);
       background: var(--surface); outline: none;
     }
     .rediger-panel input:focus, .rediger-panel select:focus { border-color: var(--green); }
@@ -634,7 +634,7 @@
     .husstand-felt input {
       width: 100%; padding: 11px 16px;
       border: 1.5px solid var(--border); border-radius: 18px;
-      font-size: 15px; outline: none; color: var(--text); background: var(--bg);
+      font-size: 16px; outline: none; color: var(--text); background: var(--bg);
     }
     .husstand-felt input:focus { border-color: var(--green); }
     #kode-input {
@@ -784,7 +784,7 @@
     .tilbakemelding-textarea {
       width: 100%; min-height: 100px; padding: 10px 14px;
       border: 1.5px solid var(--border); border-radius: 16px;
-      font-size: 14px; font-family: inherit; outline: none;
+      font-size: 16px; font-family: inherit; outline: none;
       color: var(--text); background: var(--bg); resize: vertical;
     }
     .tilbakemelding-textarea:focus { border-color: var(--green); }
@@ -832,7 +832,7 @@
     .ny-kategori-rad input[type="text"] {
       flex: 1; min-width: 140px; padding: 8px 14px;
       border: 1.5px solid var(--border); border-radius: 20px;
-      font-size: 14px; outline: none; color: var(--text); background: var(--surface);
+      font-size: 16px; outline: none; color: var(--text); background: var(--surface);
     }
     .ny-kategori-rad input[type="text"]:focus { border-color: var(--green); }
     .ny-kategori-farge-label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
@@ -1130,7 +1130,7 @@
     .modal input[type="text"] {
       width: 100%; padding: 11px 16px;
       border: 1.5px solid var(--border); border-radius: 20px;
-      font-size: 15px; outline: none; color: var(--text); background: var(--bg);
+      font-size: 16px; outline: none; color: var(--text); background: var(--bg);
     }
     .modal input[type="text"]:focus { border-color: var(--green); }
     .modal-knapper { display: flex; gap: 8px; margin-top: 16px; }

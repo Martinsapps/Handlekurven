@@ -1532,7 +1532,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v49-ux-p1-1-trykkflate';
+  var APP_VERSJON = 'matplan-v50-ux-p1-2-ingen-ios-zoom';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
