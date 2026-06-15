@@ -1532,7 +1532,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v51-ux-p1-3-safe-area';
+  var APP_VERSJON = 'matplan-v52-ux-p1-4-vare-knapper';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -1760,15 +1760,17 @@
       '<span class="sjekk" onclick="hukAv(this)"></span>' +
       '<span class="mengde-badge ' + (mengdeTekst ? '' : 'tom') + '">' + mengdeTekst + '</span>' +
       '<span class="vare-tekst">' + navn + '</span>' +
-      '<button class="notat-knapp" onclick="toggleRediger(this)" title="Rediger mengde og merknad">📝</button>' +
-      '<button class="flytt-knapp" onclick="åpneFlytt(this)" title="Flytt til annen kategori">⇄</button>' +
-      '<button class="slett" onclick="slettVare(this)">×</button>' +
-      '<div class="flytt-meny"></div>' +
+      '<button class="notat-knapp" onclick="toggleRediger(this)" title="Rediger vare" aria-label="Rediger vare">✏️</button>' +
+      '<button class="slett" onclick="slettVare(this)" title="Slett vare" aria-label="Slett vare">×</button>' +
       '<div class="rediger-panel">' +
         '<div class="rediger-rad">' +
           '<span class="rediger-etikett">Mengde:</span>' +
           '<input type="number" min="0.1" step="0.1" placeholder="Ant." value="' + (antall || '') + '">' +
-          '<select>' + enhetOptions(enhet || '–') + '</select>' +
+          '<select class="rediger-enhet">' + enhetOptions(enhet || '–') + '</select>' +
+        '</div>' +
+        '<div class="rediger-rad">' +
+          '<span class="rediger-etikett">Kategori:</span>' +
+          '<select class="rediger-kat"></select>' +
         '</div>' +
         '<div class="rediger-rad">' +
           '<span class="rediger-etikett">Merknad:</span>' +
@@ -1795,10 +1797,18 @@
     var notat = li.querySelector('.notat-tekst');
     var deler = badge.textContent.trim().split(' ');
     panel.querySelector('input[type="number"]').value = deler.length >= 2 ? deler[0] : '';
-    panel.querySelector('select').value               = deler.length >= 2 ? deler[1] : '–';
+    panel.querySelector('.rediger-enhet').value       = deler.length >= 2 ? deler[1] : '–';
     panel.querySelector('input[type="text"]').value   = notat ? notat.textContent : '';
+    // Fyll kategori-velgeren med gjeldende kategorier og velg varens nåværende
+    var katSel = panel.querySelector('.rediger-kat');
+    if (katSel) {
+      var nåId = li.closest('ul') ? li.closest('ul').id : '';
+      katSel.innerHTML = alleKategorier.map(function(k) {
+        return '<option value="' + k.id + '">' + k.navn + '</option>';
+      }).join('');
+      katSel.value = nåId;
+    }
     document.querySelectorAll('.rediger-panel.synlig').forEach(function(p) { if (p !== panel) p.classList.remove('synlig'); });
-    document.querySelectorAll('.flytt-meny.synlig').forEach(function(m) { m.classList.remove('synlig'); });
     panel.classList.toggle('synlig');
     if (panel.classList.contains('synlig')) panel.querySelector('input[type="number"]').focus();
   }
@@ -1808,7 +1818,7 @@
     var panel = li.querySelector('.rediger-panel');
     var badge = li.querySelector('.mengde-badge');
     var antall  = panel.querySelector('input[type="number"]').value.trim();
-    var enhet   = panel.querySelector('select').value;
+    var enhet   = panel.querySelector('.rediger-enhet').value;
     var mengde  = formatMengde(antall, enhet);
     badge.textContent = mengde;
     if (mengde) badge.classList.remove('tom'); else badge.classList.add('tom');
@@ -1818,7 +1828,23 @@
       if (!notat) { notat = document.createElement('span'); notat.className = 'notat-tekst'; li.insertBefore(notat, panel); }
       notat.textContent = merknadVerdi;
     } else if (notat) { notat.parentNode.removeChild(notat); }
+
+    // Kategori-endring: flytt varen til valgt kategori hvis den er en annen.
+    // Manuell flytting er et bevisst valg → lær kategorien umiddelbart (manuell=true).
+    var katSel = panel.querySelector('.rediger-kat');
+    if (katSel) {
+      var nåId  = li.closest('ul') ? li.closest('ul').id : '';
+      var målId = katSel.value;
+      if (målId && målId !== nåId && document.getElementById(målId)) {
+        document.getElementById(målId).appendChild(li);
+        var navnEl = li.querySelector('.vare-tekst');
+        if (navnEl) loggHandlet(navnEl.textContent.trim(), målId, true);
+      }
+    }
+
     panel.classList.remove('synlig');
+    oppdaterTeller();
+    oppdaterKategoriSynlighet();
     lagreAlt();
   }
 
@@ -1826,50 +1852,16 @@
     if (!e.target.closest('.rediger-panel') && !e.target.classList.contains('notat-knapp')) {
       document.querySelectorAll('.rediger-panel.synlig').forEach(function(p) { p.classList.remove('synlig'); });
     }
-    if (!e.target.closest('.flytt-meny') && !e.target.classList.contains('flytt-knapp')) {
-      document.querySelectorAll('.flytt-meny.synlig').forEach(function(m) { m.classList.remove('synlig'); });
-    }
   });
 
   // ==============================
-  // FLYTT TIL ANNEN KATEGORI
+  // KATEGORIER FOR GJELDENDE LISTE
   // ==============================
   // Standard + egne kategorier for gjeldende liste. Settes av
   // byggStandardKategorierDOM ved åpning av liste; egne kategorier
-  // legges til av byggEgenKategoriDOM.
+  // legges til av byggEgenKategoriDOM. Brukes nå av kategori-velgeren i
+  // rediger-panelet (flytting av vare skjer derfra, se lagreRediger).
   var alleKategorier = standardKategorierPerType.mat.slice();
-
-  function åpneFlytt(knapp) {
-    event.stopPropagation();
-    var li   = knapp.closest('li');
-    var meny = li.querySelector('.flytt-meny');
-    var alleredeÅpen = meny.classList.contains('synlig');
-    document.querySelectorAll('.flytt-meny.synlig').forEach(function(m) { m.classList.remove('synlig'); });
-    document.querySelectorAll('.rediger-panel.synlig').forEach(function(p) { p.classList.remove('synlig'); });
-    if (!alleredeÅpen) {
-      var nåværende = li.closest('ul').id;
-      var html = '<div class="flytt-meny-tittel">Flytt til:</div>';
-      for (var k = 0; k < alleKategorier.length; k++) {
-        if (alleKategorier[k].id !== nåværende)
-          html += '<button onclick="flyttVare(this,\'' + alleKategorier[k].id + '\')">' + alleKategorier[k].navn + '</button>';
-      }
-      meny.innerHTML = html;
-      meny.classList.add('synlig');
-    }
-  }
-
-  function flyttVare(knapp, målKategori) {
-    var li = knapp.closest('li');
-    document.getElementById(målKategori).appendChild(li);
-    li.querySelector('.flytt-meny').classList.remove('synlig');
-    // Manuell flytting er et bevisst valg - lær kategorien umiddelbart,
-    // så neste tilføyelse av samme vare foreslår denne kategorien.
-    var navnEl = li.querySelector('.vare-tekst');
-    if (navnEl) loggHandlet(navnEl.textContent.trim(), målKategori, true);
-    oppdaterTeller();
-    oppdaterKategoriSynlighet();
-    lagreAlt();
-  }
 
   // ==============================
   // KOLLAPSE KATEGORIER

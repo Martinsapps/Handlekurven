@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v51-ux-p1-3-safe-area';
+const CACHE_NAME = 'matplan-v52-ux-p1-4-vare-knapper';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {

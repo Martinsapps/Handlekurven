@@ -255,13 +255,16 @@
       cursor: pointer; user-select: none; border: 1px solid var(--border);
     }
     .skjul-boks:hover { background: var(--border); }
+    /* Nøytral stil – «Slett handlede» er en rutinemessig opprydding, ikke
+       en alvorlig handling. Skiller den fra den røde «Tøm listen» så de to
+       ikke ser like ut (begge har bekreftelse uansett). */
     .slett-handlede-knapp {
       flex: 1;
-      padding: 7px 12px; background: var(--red-lt); color: var(--red);
-      border: 1px solid var(--red-bd); border-radius: 20px;
+      padding: 7px 12px; background: none; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 20px;
       font-size: 13px; cursor: pointer; text-align: center;
     }
-    .slett-handlede-knapp:hover { background: var(--red-bd); }
+    .slett-handlede-knapp:hover { color: var(--text); border-color: var(--text); }
     .bryter {
       width: 36px; height: 20px; background: #ccc; border-radius: 20px;
       position: relative; transition: background 0.2s; flex-shrink: 0;
@@ -438,7 +441,7 @@
 
     .notat-knapp {
       background: none; border: none; color: var(--muted);
-      font-size: 13px; cursor: pointer; padding: 0 2px; flex-shrink: 0;
+      font-size: 16px; cursor: pointer; padding: 8px 9px; flex-shrink: 0; line-height: 1;
     }
     .notat-knapp:hover { color: var(--green); }
 
@@ -465,7 +468,7 @@
 
     .slett {
       background: none; border: none; color: var(--muted);
-      font-size: 17px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
+      font-size: 20px; cursor: pointer; padding: 6px 10px; line-height: 1; flex-shrink: 0;
     }
     .slett:hover { color: var(--red); }
 
