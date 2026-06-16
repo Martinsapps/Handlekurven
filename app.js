@@ -336,9 +336,9 @@
     var grid = document.createElement('div');
     grid.className = 'liste-grid';
     if (lister.length === 0) {
-      var tom = document.createElement('p');
-      tom.style.cssText = 'text-align:center;color:var(--muted);font-size:13px;padding:14px 0;';
-      tom.textContent = 'Ingen lister her ennå.';
+      var tom = document.createElement('div');
+      tom.className = 'forside-seksjon-tom';
+      tom.innerHTML = '<span class="ikon">🗒️</span> Ingen lister her ennå – trykk «+ Ny liste».';
       grid.appendChild(tom);
     } else {
       lister.forEach(function(l) { grid.appendChild(byggListekortDOM(l)); });
@@ -1532,7 +1532,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v55-rydde-dod-css';
+  var APP_VERSJON = 'matplan-v56-tomme-tilstander';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -1896,6 +1896,10 @@
     alleLi.forEach(function(li) { if (li.querySelector('.sjekk.huket')) handlede++; });
     document.getElementById('teller-tekst').textContent =
       (alle - handlede) + ' gjenstår · ' + handlede + ' handlet · ' + alle + ' totalt';
+
+    // Tom-tilstand: vis vennlig plassholder når listen er helt tom
+    var tomEl = document.getElementById('liste-tom');
+    if (tomEl) tomEl.style.display = (alle === 0) ? 'block' : 'none';
 
     // Per-kategori-teller: viser antall ikke-handlede varer som del av kategori-tittelen
     // (f.eks. "🥩 Kjøtt (3)"). Slik at man ser hva som er igjen selv når kategorien

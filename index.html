@@ -300,6 +300,13 @@
 
   <div id="egne-kategorier-container"></div>
 
+  <!-- Tom-tilstand: vises av oppdaterTeller() når listen er helt tom -->
+  <div id="liste-tom" class="liste-tom" style="display:none;">
+    <div class="liste-tom-ikon">🛒</div>
+    <div class="liste-tom-tittel">Listen er tom</div>
+    <div class="liste-tom-tekst">Skriv inn din første vare i feltet øverst.</div>
+  </div>
+
 
 </div>
 
@@ -469,7 +476,7 @@
      ved avvik tvinger app.js én reload for å hente ferskt index.html (iOS
      standalone-PWA kan ellers henge på et gammelt skall). Bump sammen med
      APP_VERSJON + CACHE_NAME. -->
-<script>window.HTML_VERSJON = 'matplan-v55-rydde-dod-css';</script>
+<script>window.HTML_VERSJON = 'matplan-v56-tomme-tilstander';</script>
 <script src="app.js"></script>
 </body>
 </html>

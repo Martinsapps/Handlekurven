@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v55-rydde-dod-css';
+const CACHE_NAME = 'matplan-v56-tomme-tilstander';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {
