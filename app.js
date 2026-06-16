@@ -1532,7 +1532,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v57-enhet-overflow-fiks';
+  var APP_VERSJON = 'matplan-v58-rydde-topp';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -1897,9 +1897,12 @@
     document.getElementById('teller-tekst').textContent =
       (alle - handlede) + ' gjenstår · ' + handlede + ' handlet · ' + alle + ' totalt';
 
-    // Tom-tilstand: vis vennlig plassholder når listen er helt tom
+    // Tom-tilstand: vis vennlig plassholder når listen er helt tom, og skjul
+    // teller-linja (0/0/0 er meningsløst) – ryddigere topp på en tom liste.
     var tomEl = document.getElementById('liste-tom');
     if (tomEl) tomEl.style.display = (alle === 0) ? 'block' : 'none';
+    var tellerBar = document.querySelector('.teller-bar');
+    if (tellerBar) tellerBar.style.display = (alle === 0) ? 'none' : '';
 
     // Per-kategori-teller: viser antall ikke-handlede varer som del av kategori-tittelen
     // (f.eks. "🥩 Kjøtt (3)"). Slik at man ser hva som er igjen selv når kategorien
@@ -2926,12 +2929,15 @@
         ? '🔴 Frakoblet – ' + antall + ' endring(er) venter på sync'
         : '🔴 Frakoblet – endringer lagres lokalt';
       status.style.color = 'var(--red)';
+      status.style.display = '';
     } else if (offlineKø.length > 0) {
       status.textContent = '🟡 Syncer...';
       status.style.color = 'var(--green-dk)';
+      status.style.display = '';
     } else {
-      status.textContent = '🟢 Koblet til sky';
-      status.style.color = 'var(--green)';
+      // Alt er bra → ikke vis noe (en statusindikator skal varsle om problemer,
+      // ikke konstant bekrefte normaltilstand). Rydder en linje fra toppen.
+      status.style.display = 'none';
     }
   }
 
