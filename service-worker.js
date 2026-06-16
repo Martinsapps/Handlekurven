@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v52-ux-p1-4-vare-knapper';
+const CACHE_NAME = 'matplan-v53-ux-p2-5-husstand-synlig';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {

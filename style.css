@@ -1122,6 +1122,31 @@
     }
     .forside-seksjon-tittel:hover .antall { background: var(--surface); }
 
+    /* ⚙️-knapp i husstand-seksjonens overskrift – åpner husstand-modalen */
+    .husstand-detaljer-knapp {
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; padding: 4px 6px; border-radius: 8px;
+      flex-shrink: 0; line-height: 1; opacity: 0.75; letter-spacing: normal;
+    }
+    .husstand-detaljer-knapp:hover { opacity: 1; background: var(--surface); }
+
+    /* CTA-kort: synlig inngang til husstand for brukere uten husstand */
+    .husstand-cta {
+      background: var(--green-lt); border: 1px solid var(--green-bd);
+      border-radius: 20px; padding: 18px 16px; margin-top: 4px;
+      display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+    }
+    .husstand-cta-ikon { font-size: 30px; line-height: 1; }
+    .husstand-cta-tittel { font-size: 15px; font-weight: 600; color: var(--text); }
+    .husstand-cta-undertekst { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .husstand-cta-knapper { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+    .husstand-cta-knapp {
+      padding: 9px 16px; border-radius: 20px; font-size: 14px; cursor: pointer;
+      border: 1.5px solid var(--green-bd); background: var(--surface); color: var(--green-dk);
+    }
+    .husstand-cta-knapp.primær { background: var(--green); color: white; border-color: var(--green); }
+    .husstand-cta-knapp:hover { opacity: 0.9; }
+
     .ny-liste-knapp {
       display: flex; align-items: center; justify-content: center; gap: 10px;
       width: 100%; padding: 14px; margin-top: 4px;

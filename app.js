@@ -321,16 +321,29 @@
 
     var tittelEl = document.createElement('div');
     tittelEl.className = 'forside-seksjon-tittel';
+    // Husstand-seksjoner får en ⚙️-knapp som åpner husstand-modalen (medlemmer,
+    // kode, forlat) direkte fra forsiden – ikke lenger bare gjemt bak avataren.
+    var detaljKnapp = (kontekst !== 'personlig')
+      ? '<button class="husstand-detaljer-knapp" title="Husstand" aria-label="Husstand-detaljer">⚙️</button>'
+      : '';
     tittelEl.innerHTML =
       '<span class="ikon">' + ikon + '</span>' +
       '<span class="navn">' + tittel + '</span>' +
       '<span class="antall">' + lister.length + '</span>' +
+      detaljKnapp +
       '<span class="pil">▼</span>';
     tittelEl.addEventListener('click', function() {
       var nyTilstand = !seksjon.classList.contains('kollapset');
       seksjon.classList.toggle('kollapset', nyTilstand);
       settSeksjonKollapset(kontekst, nyTilstand);
     });
+    var dk = tittelEl.querySelector('.husstand-detaljer-knapp');
+    if (dk) {
+      dk.addEventListener('click', function(e) {
+        e.stopPropagation(); // ikke kollaps seksjonen
+        åpneHusstandModal(kontekst);
+      });
+    }
     seksjon.appendChild(tittelEl);
 
     var grid = document.createElement('div');
@@ -367,6 +380,26 @@
       var husstandsLister = alleLister.filter(function(l) { return l.kontekst === h.id; });
       container.appendChild(byggForsideSeksjon(h.navn, '🏠', h.id, husstandsLister));
     });
+
+    // Ingen husstand ennå → vis en tydelig inngang til delingsfunksjonen, så
+    // kjerneverdien (delte lister) ikke er gjemt bak profil-avataren.
+    if (mineHusstander.length === 0) {
+      container.appendChild(byggHusstandCTA());
+    }
+  }
+
+  function byggHusstandCTA() {
+    var kort = document.createElement('div');
+    kort.className = 'husstand-cta';
+    kort.innerHTML =
+      '<div class="husstand-cta-ikon">👨‍👩‍👧</div>' +
+      '<div class="husstand-cta-tittel">Del lister med husstanden din</div>' +
+      '<div class="husstand-cta-undertekst">Opprett en husstand eller bli med i en eksisterende – så ser dere de samme listene i sanntid.</div>' +
+      '<div class="husstand-cta-knapper">' +
+        '<button class="husstand-cta-knapp primær" onclick="åpneOpprettHusstand()">🏠 Opprett husstand</button>' +
+        '<button class="husstand-cta-knapp" onclick="åpneBliMedHusstand()">🔑 Bli med</button>' +
+      '</div>';
+    return kort;
   }
 
   // Kontekst for liste som skal opprettes (settes når brukeren klikker
@@ -1532,7 +1565,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v52-ux-p1-4-vare-knapper';
+  var APP_VERSJON = 'matplan-v53-ux-p2-5-husstand-synlig';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
