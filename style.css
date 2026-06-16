@@ -291,6 +291,11 @@
     .legg-til-rad1 input.duplikat-felt { border-color: var(--red); }
 
     .legg-til-rad2 { display: flex; gap: 8px; align-items: center; }
+    /* La chip-ene dele bredden og krympe ved behov, så enhet-boksen aldri
+       presses utenfor skjermkanten. Kategori-chipen tar tilgjengelig plass;
+       mengde/enhet-chipen holder seg kompakt. Overstyrer .chip flex-shrink:0. */
+    .legg-til-rad2 .chip { flex: 0 1 auto; min-width: 0; }
+    .legg-til-rad2 .chip:first-child { flex: 1 1 auto; }
 
     .chip {
       display: flex; align-items: center; gap: 5px;
@@ -307,7 +312,9 @@
       width: 40px; text-align: center; font-size: 16px;
       border-right: 1px solid var(--border); padding-right: 6px; margin-right: 2px;
     }
-    .chip select { max-width: 150px; }
+    .chip select { max-width: 150px; min-width: 0; }
+    /* Enhet trenger lite plass (lengste er «flaske») – hindre at den brer seg ut */
+    #ny-enhet { max-width: 92px; }
 
     .legg-til-rad3 { display: flex; }
     .legg-til-knapp {

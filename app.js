@@ -1532,7 +1532,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v56-tomme-tilstander';
+  var APP_VERSJON = 'matplan-v57-enhet-overflow-fiks';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på

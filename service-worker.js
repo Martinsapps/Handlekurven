@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v56-tomme-tilstander';
+const CACHE_NAME = 'matplan-v57-enhet-overflow-fiks';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {
