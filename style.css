@@ -445,26 +445,7 @@
     }
     .notat-knapp:hover { color: var(--green); }
 
-    .flytt-knapp {
-      background: none; border: none; color: var(--muted);
-      font-size: 13px; cursor: pointer; padding: 0 2px; flex-shrink: 0;
-    }
-    .flytt-knapp:hover { color: var(--green); }
     li { position: relative; }
-    .flytt-meny {
-      display: none; position: absolute; right: 8px; top: 40px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-      z-index: 100; padding: 6px; min-width: 180px;
-    }
-    .flytt-meny.synlig { display: block; }
-    .flytt-meny-tittel { font-size: 11px; color: var(--muted); padding: 4px 8px 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-    .flytt-meny button {
-      display: block; width: 100%; text-align: left; padding: 7px 10px;
-      background: none; border: none; border-radius: 10px;
-      font-size: 13px; color: var(--text); cursor: pointer;
-    }
-    .flytt-meny button:hover { background: var(--bg); }
 
     .slett {
       background: none; border: none; color: var(--muted);
@@ -483,9 +464,9 @@
 
     @media print {
       .basisliste-knapp, .basisliste-panel, .kontrollrad, .legg-til-boks,
-      .duplikat-advarsel, .sorter-knapp, .flytt-knapp, .notat-knapp,
+      .duplikat-advarsel, .sorter-knapp, .notat-knapp,
       .slett, .skriv-ut-knapp, .tøm-knapp, .rediger-panel,
-      .flytt-meny, .bekreft-boks, .sidebar, .sidebar-overlay,
+      .bekreft-boks, .sidebar, .sidebar-overlay,
       .modal-overlay, .bekreft-overlay, .sidebar-knapp,
       .tilbake-knapp, .teller-bar, .undertittel, .feillogg-knapp,
       .feillogg-panel { display: none !important; }
