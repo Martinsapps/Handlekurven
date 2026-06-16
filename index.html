@@ -134,6 +134,18 @@
 <div class="container" id="forside-container">
   <div class="forside">
     <div class="forside-header">
+      <!-- Husstand-inngang: hjemmet for alt husstand-relatert (medlemmer, kode, eier) -->
+      <button class="topp-ikon-knapp" id="husstand-knapp" onclick="toggleHusstandDropdown()" title="Husstander" aria-label="Husstander">🏠</button>
+      <div class="husstand-dropdown" id="husstand-dropdown">
+        <div class="profil-husstand-tittel">Husstander</div>
+        <div id="husstand-liste">
+          <!-- Bygges dynamisk: liste over husstander brukeren er medlem av -->
+        </div>
+        <button class="profil-handling" onclick="åpneOpprettHusstand()">🏠 Opprett husstand</button>
+        <button class="profil-handling" onclick="åpneBliMedHusstand()">🔑 Bli med i husstand</button>
+      </div>
+
+      <!-- Konto: kun konto-administrasjon (navn, logg ut, slett konto) -->
       <button class="profil-sirkel" id="profil-sirkel" onclick="toggleProfilDropdown()" title="Konto"></button>
       <div class="profil-dropdown" id="profil-dropdown">
         <div class="profil-info">
@@ -142,10 +154,6 @@
             <button class="profil-rediger-navn" onclick="åpneEndreNavn()" title="Endre navn" aria-label="Endre navn">✏️</button>
           </div>
           <div class="profil-email" id="profil-email">—</div>
-        </div>
-        <div class="profil-husstander" id="profil-husstander">
-          <!-- Bygges dynamisk: liste over husstander brukeren er medlem av,
-               eller "Opprett/Bli med"-knapper hvis ingen -->
         </div>
         <button class="profil-handling" onclick="loggUt()">🚪 Logg ut</button>
         <button class="profil-handling profil-slett-konto" onclick="bekreftSlettKonto()">🗑️ Slett konto</button>
@@ -461,7 +469,7 @@
      ved avvik tvinger app.js én reload for å hente ferskt index.html (iOS
      standalone-PWA kan ellers henge på et gammelt skall). Bump sammen med
      APP_VERSJON + CACHE_NAME. -->
-<script>window.HTML_VERSJON = 'matplan-v53-ux-p2-5-husstand-synlig';</script>
+<script>window.HTML_VERSJON = 'matplan-v54-husstand-knapp';</script>
 <script src="app.js"></script>
 </body>
 </html>

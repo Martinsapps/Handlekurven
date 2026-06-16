@@ -576,7 +576,17 @@
       flex-shrink: 0;
     }
     .profil-sirkel:hover { transform: scale(1.05); }
-    .profil-dropdown {
+    /* Husstand-knapp – egen inngang ved siden av konto-avataren */
+    .topp-ikon-knapp {
+      position: absolute; top: 0; right: 54px;
+      width: 46px; height: 46px; border-radius: 50%;
+      background: var(--surface); border: 2px solid var(--border);
+      font-size: 20px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+    }
+    .topp-ikon-knapp:hover { border-color: var(--green); transform: scale(1.05); }
+    .profil-dropdown, .husstand-dropdown {
       display: none;
       position: absolute; top: 54px; right: 0;
       background: var(--surface); border: 1px solid var(--border);
@@ -584,7 +594,7 @@
       min-width: 280px; z-index: 500;
       box-shadow: 0 4px 20px rgba(0,0,0,0.12);
     }
-    .profil-dropdown.synlig { display: block; }
+    .profil-dropdown.synlig, .husstand-dropdown.synlig { display: block; }
     .profil-info { padding: 12px 14px 14px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
     .profil-navn-rad { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
     .profil-navn { font-size: 16px; font-weight: 600; color: var(--text); }
@@ -604,8 +614,6 @@
     .profil-slett-konto { color: var(--red); }
     .profil-slett-konto:hover { background: var(--red-lt); }
 
-    .profil-husstander { padding: 8px 0; border-top: 1px solid var(--border); margin-bottom: 8px; }
-    .profil-husstander:empty { display: none; }
     .profil-husstand-rad {
       display: flex; align-items: center; gap: 10px;
       padding: 8px 14px; font-size: 15px; color: var(--text);
@@ -623,6 +631,9 @@
     .profil-husstand-tittel {
       font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em;
       color: var(--muted); padding: 6px 14px;
+    }
+    .profil-husstand-tom {
+      font-size: 13px; color: var(--muted); font-style: italic; padding: 4px 14px 10px;
     }
 
     /* HUSSTAND-MODALER */
@@ -1121,31 +1132,6 @@
       letter-spacing: normal;
     }
     .forside-seksjon-tittel:hover .antall { background: var(--surface); }
-
-    /* ⚙️-knapp i husstand-seksjonens overskrift – åpner husstand-modalen */
-    .husstand-detaljer-knapp {
-      background: none; border: none; cursor: pointer;
-      font-size: 14px; padding: 4px 6px; border-radius: 8px;
-      flex-shrink: 0; line-height: 1; opacity: 0.75; letter-spacing: normal;
-    }
-    .husstand-detaljer-knapp:hover { opacity: 1; background: var(--surface); }
-
-    /* CTA-kort: synlig inngang til husstand for brukere uten husstand */
-    .husstand-cta {
-      background: var(--green-lt); border: 1px solid var(--green-bd);
-      border-radius: 20px; padding: 18px 16px; margin-top: 4px;
-      display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
-    }
-    .husstand-cta-ikon { font-size: 30px; line-height: 1; }
-    .husstand-cta-tittel { font-size: 15px; font-weight: 600; color: var(--text); }
-    .husstand-cta-undertekst { font-size: 13px; color: var(--muted); line-height: 1.5; }
-    .husstand-cta-knapper { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
-    .husstand-cta-knapp {
-      padding: 9px 16px; border-radius: 20px; font-size: 14px; cursor: pointer;
-      border: 1.5px solid var(--green-bd); background: var(--surface); color: var(--green-dk);
-    }
-    .husstand-cta-knapp.primær { background: var(--green); color: white; border-color: var(--green); }
-    .husstand-cta-knapp:hover { opacity: 0.9; }
 
     .ny-liste-knapp {
       display: flex; align-items: center; justify-content: center; gap: 10px;

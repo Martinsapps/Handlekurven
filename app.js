@@ -321,29 +321,16 @@
 
     var tittelEl = document.createElement('div');
     tittelEl.className = 'forside-seksjon-tittel';
-    // Husstand-seksjoner får en ⚙️-knapp som åpner husstand-modalen (medlemmer,
-    // kode, forlat) direkte fra forsiden – ikke lenger bare gjemt bak avataren.
-    var detaljKnapp = (kontekst !== 'personlig')
-      ? '<button class="husstand-detaljer-knapp" title="Husstand" aria-label="Husstand-detaljer">⚙️</button>'
-      : '';
     tittelEl.innerHTML =
       '<span class="ikon">' + ikon + '</span>' +
       '<span class="navn">' + tittel + '</span>' +
       '<span class="antall">' + lister.length + '</span>' +
-      detaljKnapp +
       '<span class="pil">▼</span>';
     tittelEl.addEventListener('click', function() {
       var nyTilstand = !seksjon.classList.contains('kollapset');
       seksjon.classList.toggle('kollapset', nyTilstand);
       settSeksjonKollapset(kontekst, nyTilstand);
     });
-    var dk = tittelEl.querySelector('.husstand-detaljer-knapp');
-    if (dk) {
-      dk.addEventListener('click', function(e) {
-        e.stopPropagation(); // ikke kollaps seksjonen
-        åpneHusstandModal(kontekst);
-      });
-    }
     seksjon.appendChild(tittelEl);
 
     var grid = document.createElement('div');
@@ -380,26 +367,6 @@
       var husstandsLister = alleLister.filter(function(l) { return l.kontekst === h.id; });
       container.appendChild(byggForsideSeksjon(h.navn, '🏠', h.id, husstandsLister));
     });
-
-    // Ingen husstand ennå → vis en tydelig inngang til delingsfunksjonen, så
-    // kjerneverdien (delte lister) ikke er gjemt bak profil-avataren.
-    if (mineHusstander.length === 0) {
-      container.appendChild(byggHusstandCTA());
-    }
-  }
-
-  function byggHusstandCTA() {
-    var kort = document.createElement('div');
-    kort.className = 'husstand-cta';
-    kort.innerHTML =
-      '<div class="husstand-cta-ikon">👨‍👩‍👧</div>' +
-      '<div class="husstand-cta-tittel">Del lister med husstanden din</div>' +
-      '<div class="husstand-cta-undertekst">Opprett en husstand eller bli med i en eksisterende – så ser dere de samme listene i sanntid.</div>' +
-      '<div class="husstand-cta-knapper">' +
-        '<button class="husstand-cta-knapp primær" onclick="åpneOpprettHusstand()">🏠 Opprett husstand</button>' +
-        '<button class="husstand-cta-knapp" onclick="åpneBliMedHusstand()">🔑 Bli med</button>' +
-      '</div>';
-    return kort;
   }
 
   // Kontekst for liste som skal opprettes (settes når brukeren klikker
@@ -1565,7 +1532,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v53-ux-p2-5-husstand-synlig';
+  var APP_VERSJON = 'matplan-v54-husstand-knapp';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -3179,7 +3146,7 @@
       // 1. Oppdater mineHusstander UMIDDELBART for å fjerne husstander brukeren
       //    ikke lenger er med i (UI oppdateres med en gang).
       mineHusstander = mineHusstander.filter(function(h) { return husstandIder[h.id]; });
-      tegnProfilDropdown();
+      tegnHusstandDropdown();
       tegnForside();
 
       // 2. Detach Firebase-lyttere for husstander brukeren ikke lenger er med i
@@ -3217,7 +3184,7 @@
         resultater.filter(function(h) { return h !== null; }).forEach(function(h) {
           mineHusstander.push(h);
         });
-        tegnProfilDropdown();
+        tegnHusstandDropdown();
         tegnForside();
 
         // Sett opp lyttere på hver husstands lister-meta + egne-kategorier
@@ -3367,42 +3334,34 @@
   // ==============================
   // UI for husstand-handlinger
   // ==============================
-  function tegnProfilDropdown() {
-    var container = document.getElementById('profil-husstander');
+  function tegnHusstandDropdown() {
+    var container = document.getElementById('husstand-liste');
     if (!container) return;
     container.innerHTML = '';
     if (mineHusstander.length === 0) {
-      // Ingen husstand - vis opprett/bli med-knapper
-      container.innerHTML =
-        '<div class="profil-husstand-tittel">Du er ikke i en husstand</div>' +
-        '<button class="profil-handling" onclick="åpneOpprettHusstand()">🏠 Opprett husstand</button>' +
-        '<button class="profil-handling" onclick="åpneBliMedHusstand()">🔑 Bli med i husstand</button>';
-    } else {
-      // Vis liste over husstander + opprett-knapper for flere
-      container.innerHTML = '<div class="profil-husstand-tittel">Husstander</div>';
-      mineHusstander.forEach(function(h) {
-        var rad = document.createElement('div');
-        rad.className = 'profil-husstand-rad';
-        rad.style.cursor = 'pointer';
-        var antall = Object.keys(h.medlemmer || {}).length;
-        // Hele raden åpner husstand-modalen (medlemmer, kode, forlat samlet)
-        rad.onclick = function() { åpneHusstandModal(h.id); };
-        rad.innerHTML =
-          '<span class="ikon">🏠</span>' +
-          '<span class="navn">' + h.navn + ' <span style="color:var(--muted);font-weight:normal">(' + antall + ')</span></span>' +
-          '<span class="handling" title="Åpne husstand" style="font-size:18px">›</span>';
-        container.appendChild(rad);
-      });
-      var ekstra = document.createElement('div');
-      ekstra.innerHTML =
-        '<button class="profil-handling" onclick="åpneOpprettHusstand()">🏠 Opprett ny husstand</button>' +
-        '<button class="profil-handling" onclick="åpneBliMedHusstand()">🔑 Bli med i annen husstand</button>';
-      container.appendChild(ekstra);
+      var tom = document.createElement('div');
+      tom.className = 'profil-husstand-tom';
+      tom.textContent = 'Du er ikke i en husstand ennå.';
+      container.appendChild(tom);
+      return;
     }
+    mineHusstander.forEach(function(h) {
+      var rad = document.createElement('div');
+      rad.className = 'profil-husstand-rad';
+      rad.style.cursor = 'pointer';
+      var antall = Object.keys(h.medlemmer || {}).length;
+      // Hele raden åpner husstand-modalen (medlemmer, kode, eier, forlat samlet)
+      rad.onclick = function() { åpneHusstandModal(h.id); };
+      rad.innerHTML =
+        '<span class="ikon">🏠</span>' +
+        '<span class="navn">' + h.navn + ' <span style="color:var(--muted);font-weight:normal">(' + antall + ')</span></span>' +
+        '<span class="handling" title="Åpne husstand" style="font-size:18px">›</span>';
+      container.appendChild(rad);
+    });
   }
 
   function åpneOpprettHusstand() {
-    lukkProfilDropdown();
+    lukkHusstandDropdown();
     document.getElementById('ny-husstand-navn').value = '';
     document.getElementById('opprett-husstand-overlay').classList.add('synlig');
     setTimeout(function() { document.getElementById('ny-husstand-navn').focus(); }, 100);
@@ -3427,7 +3386,7 @@
   }
 
   function åpneBliMedHusstand() {
-    lukkProfilDropdown();
+    lukkHusstandDropdown();
     document.getElementById('kode-input').value = '';
     document.getElementById('kode-feilmelding').textContent = '';
     document.getElementById('bli-med-husstand-overlay').classList.add('synlig');
@@ -3456,7 +3415,7 @@
   var aktivHusstandModalId = null;
 
   function åpneHusstandModal(husstandId) {
-    lukkProfilDropdown();
+    lukkHusstandDropdown();
     aktivHusstandModalId = husstandId;
     var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
 
@@ -3595,7 +3554,7 @@
       if (husstand.medlemmer) delete husstand.medlemmer[uid];
       if (husstand.medlemsnavn) delete husstand.medlemsnavn[uid];
       tegnHusstandMedlemmer(husstand);
-      tegnProfilDropdown();
+      tegnHusstandDropdown();
     }).catch(function(err) {
       loggFeil('Fjern medlem: ' + err.message, 'husstand', '');
     });
@@ -3673,7 +3632,7 @@
       return;
     }
 
-    tegnProfilDropdown();
+    tegnHusstandDropdown();
     if (aktivHusstandModalId === husstandId && hh) tegnHusstandMedlemmer(hh);
   }
 
@@ -3728,7 +3687,7 @@
   }
 
   function bekreftForlatHusstand(husstandId, husstandNavn) {
-    lukkProfilDropdown();
+    lukkHusstandDropdown();
     var husstand = mineHusstander.find(function(h) { return h.id === husstandId; });
     var medlemAntall = husstand ? Object.keys(husstand.medlemmer || {}).length : 0;
 
@@ -4120,12 +4079,27 @@
   }
 
   function toggleProfilDropdown() {
+    lukkHusstandDropdown(); // bare én dropdown åpen om gangen
     var dd = document.getElementById('profil-dropdown');
     if (dd) dd.classList.toggle('synlig');
   }
 
   function lukkProfilDropdown() {
     var dd = document.getElementById('profil-dropdown');
+    if (dd) dd.classList.remove('synlig');
+  }
+
+  function toggleHusstandDropdown() {
+    lukkProfilDropdown(); // bare én dropdown åpen om gangen
+    var dd = document.getElementById('husstand-dropdown');
+    if (!dd) return;
+    var skalÅpne = !dd.classList.contains('synlig');
+    if (skalÅpne) tegnHusstandDropdown(); // ferskt innhold ved hver åpning
+    dd.classList.toggle('synlig');
+  }
+
+  function lukkHusstandDropdown() {
+    var dd = document.getElementById('husstand-dropdown');
     if (dd) dd.classList.remove('synlig');
   }
 
@@ -4171,10 +4145,13 @@
     });
   }
 
-  // Lukk profil-dropdown når man klikker utenfor
+  // Lukk dropdownene når man klikker utenfor
   document.addEventListener('click', function(e) {
     if (!e.target.closest('#profil-sirkel') && !e.target.closest('#profil-dropdown')) {
       lukkProfilDropdown();
+    }
+    if (!e.target.closest('#husstand-knapp') && !e.target.closest('#husstand-dropdown')) {
+      lukkHusstandDropdown();
     }
   });
 
