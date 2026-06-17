@@ -66,19 +66,18 @@
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 <div class="sidebar" id="sidebar">
   <div class="sidebar-topp">
-    <span class="sidebar-tittel">Forberedelser</span>
+    <span class="sidebar-tittel">Meny</span>
     <button class="sidebar-lukk" onclick="toggleSidebar()">×</button>
   </div>
 
   <div class="sidebar-faner">
     <button class="sidebar-fane aktiv" id="fane-basis-knapp" onclick="byttFane('basis')">⭐ Favoritter</button>
-    <button class="sidebar-fane" id="fane-kategorier-knapp" onclick="byttFane('kategorier')">🗂 Kat.</button>
-    <button class="sidebar-fane" id="fane-skriv-knapp" onclick="byttFane('skriv')">🖨 Skriv</button>
+    <button class="sidebar-fane" id="fane-kategorier-knapp" onclick="byttFane('kategorier')">🗂 Kategorier</button>
+    <button class="sidebar-fane" id="fane-skriv-knapp" onclick="byttFane('skriv')">🖨 Skriv ut</button>
   </div>
 
   <div class="sidebar-innhold aktiv" id="fane-basis">
     <div class="basisliste-panel åpen" id="basisliste-panel" style="border:none;padding:0;background:none;margin-bottom:0;">
-      <h3 style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--green-dk);margin-bottom:10px;">Kryss av det du trenger denne uken</h3>
       <div id="basis-varer-liste"></div>
       <div class="basis-bunn">
         <input class="basis-input" id="ny-basis-vare" type="text" aria-label="Favoritt" placeholder="Legg til favoritt..."
@@ -224,7 +223,7 @@
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
     <h1 style="margin-bottom:0;" id="aktiv-liste-tittel">🛒 Min handleliste</h1>
-    <button class="sidebar-knapp" onclick="toggleSidebar()" title="Forberedelser" aria-label="Meny">☰</button>
+    <button class="sidebar-knapp" onclick="toggleSidebar()" title="Meny" aria-label="Meny">☰</button>
   </div>
 
   <div class="teller-bar">
@@ -475,7 +474,7 @@
      ved avvik tvinger app.js én reload for å hente ferskt index.html (iOS
      standalone-PWA kan ellers henge på et gammelt skall). Bump sammen med
      APP_VERSJON + CACHE_NAME. -->
-<script>window.HTML_VERSJON = 'matplan-v59-aria-labels';</script>
+<script>window.HTML_VERSJON = 'matplan-v60-meny-navn';</script>
 <script src="app.js"></script>
 </body>
 </html>

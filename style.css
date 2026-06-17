@@ -964,9 +964,10 @@
       border: 1.5px solid var(--border); border-radius: 20px; overflow: hidden;
     }
     .sidebar-fane {
-      flex: 1; padding: 9px 12px; font-size: 13px; font-weight: 500;
+      flex: 1; padding: 9px 8px; font-size: 12px; font-weight: 500;
       background: none; border: none; cursor: pointer;
       color: var(--muted); text-align: center; transition: all 0.15s;
+      white-space: nowrap;
     }
     .sidebar-fane.aktiv {
       background: var(--text); color: var(--surface);
