@@ -81,9 +81,9 @@
       <h3 style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--green-dk);margin-bottom:10px;">Kryss av det du trenger denne uken</h3>
       <div id="basis-varer-liste"></div>
       <div class="basis-bunn">
-        <input class="basis-input" id="ny-basis-vare" type="text" placeholder="Legg til favoritt..."
+        <input class="basis-input" id="ny-basis-vare" type="text" aria-label="Favoritt" placeholder="Legg til favoritt..."
           oninput="foreslåBasisKategori(this.value)">
-        <select class="basis-kat-velg" id="basis-kat-velg">
+        <select class="basis-kat-velg" id="basis-kat-velg" aria-label="Kategori">
           <option value="kjott">🥩 Kjøtt</option>
           <option value="fisk">🐟 Fisk og skalldyr</option>
           <option value="meieri">🥛 Meieri</option>
@@ -93,7 +93,7 @@
           <option value="husholdning">🧹 Husholdning</option>
           <option value="diverse">🛍️ Diverse</option>
         </select>
-        <button class="basis-legg-til-knapp" onclick="leggTilBasisVare()">+</button>
+        <button class="basis-legg-til-knapp" onclick="leggTilBasisVare()" aria-label="Legg til favoritt">+</button>
       </div>
       <button class="basis-overfør-knapp" onclick="overførTilHovedliste()">✓ Overfør avkryssede til handlelisten</button>
       <p class="basis-info" id="basis-info">Kryss av varene du trenger denne uken</p>
@@ -146,7 +146,7 @@
       </div>
 
       <!-- Konto: kun konto-administrasjon (navn, logg ut, slett konto) -->
-      <button class="profil-sirkel" id="profil-sirkel" onclick="toggleProfilDropdown()" title="Konto"></button>
+      <button class="profil-sirkel" id="profil-sirkel" onclick="toggleProfilDropdown()" title="Konto" aria-label="Konto"></button>
       <div class="profil-dropdown" id="profil-dropdown">
         <div class="profil-info">
           <div class="profil-navn-rad">
@@ -171,7 +171,7 @@
 <!-- BEKREFTELSE-OVERLAY -->
 <div class="bekreft-overlay" id="bekreft-overlay">
   <div class="bekreft-boks">
-    <button class="modal-lukk-x" onclick="lukkBekreft()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkBekreft()" aria-label="Lukk" title="Lukk">×</button>
     <div id="bekreft-tekst" style="padding-right:36px"></div>
     <div class="bekreft-knapper">
       <button class="bekreft-nei" onclick="lukkBekreft()">Avbryt</button>
@@ -183,7 +183,7 @@
 <!-- NY LISTE MODAL -->
 <div class="modal-overlay" id="ny-liste-modal">
   <div class="modal">
-    <button class="modal-lukk-x" onclick="lukkNyListeModal()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkNyListeModal()" aria-label="Lukk" title="Lukk">×</button>
     <h2 id="modal-tittel">Ny liste</h2>
     <div class="modal-felt">
       <div class="modal-etikett">Navn</div>
@@ -224,7 +224,7 @@
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
     <h1 style="margin-bottom:0;" id="aktiv-liste-tittel">🛒 Min handleliste</h1>
-    <button class="sidebar-knapp" onclick="toggleSidebar()" title="Forberedelser">☰</button>
+    <button class="sidebar-knapp" onclick="toggleSidebar()" title="Forberedelser" aria-label="Meny">☰</button>
   </div>
 
   <div class="teller-bar">
@@ -248,7 +248,7 @@
   <div class="legg-til-boks">
     <div class="legg-til-rad1">
       <div class="autofullfør-wrapper">
-        <input type="text" id="ny-vare" placeholder="Hva skal du handle?"
+        <input type="text" id="ny-vare" aria-label="Vare" placeholder="Hva skal du handle?"
           oninput="sjekkDuplikat(this); foreslåKategori(this.value); visAutofullfør(this.value)"
           onkeydown="håndterAutoTast(event)"
           autocomplete="off">
@@ -257,8 +257,8 @@
     </div>
     <div class="legg-til-rad2">
       <div class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        <select id="velg-kategori">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <select id="velg-kategori" aria-label="Kategori">
           <option value="kjott">🥩 Kjøtt</option>
           <option value="fisk">🐟 Fisk og skalldyr</option>
           <option value="meieri">🥛 Meieri</option>
@@ -270,9 +270,9 @@
         </select>
       </div>
       <div class="chip">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        <input type="number" id="ny-antall" min="0.1" step="0.1" placeholder="0">
-        <select id="ny-enhet">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <input type="number" id="ny-antall" min="0.1" step="0.1" placeholder="0" aria-label="Mengde">
+        <select id="ny-enhet" aria-label="Enhet">
           <option value="">–</option>
           <option value="stk">stk</option>
           <option value="pk">pk</option>
@@ -309,9 +309,9 @@
 
 </div>
 
-<button class="tilbakemelding-knapp" id="tilbakemelding-knapp" onclick="åpneTilbakemeldingModal()" title="Send tilbakemelding">💬</button>
+<button class="tilbakemelding-knapp" id="tilbakemelding-knapp" onclick="åpneTilbakemeldingModal()" title="Send tilbakemelding" aria-label="Send tilbakemelding">💬</button>
 
-<button class="feillogg-knapp" id="feillogg-knapp" onclick="toggleFeillogg()" title="Vis feillogg">⚠</button>
+<button class="feillogg-knapp" id="feillogg-knapp" onclick="toggleFeillogg()" title="Vis feillogg" aria-label="Vis feillogg">⚠</button>
 <div class="feillogg-panel" id="feillogg-panel">
   <div class="feillogg-tittel">
     <span>⚠ Feillogg</span>
@@ -326,7 +326,7 @@
 <!-- HUSSTAND-MODALER -->
 <div class="husstand-overlay" id="opprett-husstand-overlay">
   <div class="husstand-modal">
-    <button class="modal-lukk-x" onclick="lukkOpprettHusstand()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkOpprettHusstand()" aria-label="Lukk" title="Lukk">×</button>
     <h2>🏠 Opprett ny husstand</h2>
     <p class="husstand-intro">Gi husstanden et navn (f.eks. familienavn eller adresse). Andre kan bli med ved å skrive inn invitasjonskoden din.</p>
     <div class="husstand-felt">
@@ -342,7 +342,7 @@
 
 <div class="husstand-overlay" id="bli-med-husstand-overlay">
   <div class="husstand-modal">
-    <button class="modal-lukk-x" onclick="lukkBliMedHusstand()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkBliMedHusstand()" aria-label="Lukk" title="Lukk">×</button>
     <h2>🔑 Bli med i husstand</h2>
     <p class="husstand-intro">Be om en invitasjonskode fra noen som allerede er i husstanden, og skriv den inn under.</p>
     <div class="husstand-felt">
@@ -359,7 +359,7 @@
 
 <div class="husstand-overlay" id="gjenoppretting-overlay">
   <div class="husstand-modal">
-    <button class="modal-lukk-x" onclick="lukkGjenopprettingsModal()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkGjenopprettingsModal()" aria-label="Lukk" title="Lukk">×</button>
     <h2>⚠ Husstand bevares i 4 uker</h2>
     <p class="husstand-intro">
       <strong id="gjenoppretting-husstand-navn">…</strong> har ingen aktive medlemmer.
@@ -381,7 +381,7 @@
 
 <div class="husstand-overlay" id="invitasjonskode-overlay">
   <div class="husstand-modal">
-    <button class="modal-lukk-x" onclick="lukkHusstandModal()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkHusstandModal()" aria-label="Lukk" title="Lukk">×</button>
     <h2 id="husstand-modal-tittel">🏠 Husstand</h2>
 
     <!-- Medlemmer -->
@@ -408,7 +408,7 @@
 
 <div class="husstand-overlay" id="endre-navn-overlay">
   <div class="husstand-modal">
-    <button class="modal-lukk-x" onclick="lukkEndreNavn()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkEndreNavn()" aria-label="Lukk" title="Lukk">×</button>
     <h2>✏️ Endre visningsnavn</h2>
     <p class="husstand-intro">Navnet vises i profilen din og til de andre i husstandene dine.</p>
     <div class="husstand-felt">
@@ -426,7 +426,7 @@
 
 <div class="husstand-overlay" id="velg-eier-overlay">
   <div class="husstand-modal">
-    <button class="modal-lukk-x" onclick="lukkVelgEier()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkVelgEier()" aria-label="Lukk" title="Lukk">×</button>
     <h2>👑 Velg ny eier</h2>
     <p class="husstand-intro">Du forlater husstanden. Velg hvem som skal overta som eier.</p>
     <div id="velg-eier-liste" class="husstand-medlemmer-liste"></div>
@@ -440,7 +440,7 @@
 <!-- TILBAKEMELDING MODAL -->
 <div class="tilbakemelding-overlay" id="tilbakemelding-overlay">
   <div class="tilbakemelding-modal">
-    <button class="modal-lukk-x" onclick="lukkTilbakemeldingModal()" title="Lukk">×</button>
+    <button class="modal-lukk-x" onclick="lukkTilbakemeldingModal()" aria-label="Lukk" title="Lukk">×</button>
     <h2>💬 Send tilbakemelding</h2>
     <p class="tilbakemelding-intro">Hjelp oss å forbedre Handlekurven – fortell hva du har opplevd, ønsker eller lurer på.</p>
 
@@ -475,7 +475,7 @@
      ved avvik tvinger app.js én reload for å hente ferskt index.html (iOS
      standalone-PWA kan ellers henge på et gammelt skall). Bump sammen med
      APP_VERSJON + CACHE_NAME. -->
-<script>window.HTML_VERSJON = 'matplan-v58-rydde-topp';</script>
+<script>window.HTML_VERSJON = 'matplan-v59-aria-labels';</script>
 <script src="app.js"></script>
 </body>
 </html>

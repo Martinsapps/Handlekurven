@@ -726,7 +726,7 @@
         '<p class="kategori-tittel" id="' + id + '-header" style="background:' + farge.bg + ';color:' + farge.tekst + '">' + navn + '</p>' +
         '<span class="kategori-pil" id="' + id + '-pil">▼</span>' +
         '<button class="sorter-knapp" onclick="event.stopPropagation();sorterKategori(\'' + id + '\')">A–Å</button>' +
-        '<button class="slett-kategori-knapp" onclick="event.stopPropagation();slettEgenKategori(\'' + id + '\')" title="Slett kategori">×</button>' +
+        '<button class="slett-kategori-knapp" onclick="event.stopPropagation();slettEgenKategori(\'' + id + '\')" aria-label="Slett kategori" title="Slett kategori">×</button>' +
       '</div>' +
       '<ul id="' + id + '"></ul>';
     container.appendChild(div);
@@ -904,6 +904,7 @@
       var slett = document.createElement('button');
       slett.className = 'sidebar-kat-slett';
       slett.title = 'Slett kategori';
+      slett.setAttribute('aria-label', 'Slett kategori');
       slett.textContent = '×';
       slett.addEventListener('click', function() { slettEgenKategori(k.id); });
       div.appendChild(badge);
@@ -1067,7 +1068,7 @@
         '<span class="forslag-navn">' + f.navn + '</span>' +
         '<span class="forslag-frekvens">' + f.uker + '/4 uker</span>' +
         '<button class="forslag-legg-til">+ Basis</button>' +
-        '<button class="forslag-avvis" title="Ikke foreslå igjen">×</button>';
+        '<button class="forslag-avvis" title="Ikke foreslå igjen" aria-label="Ikke foreslå igjen">×</button>';
       (function(fRef) {
         div.querySelector('.forslag-legg-til').addEventListener('click', function() {
           leggForslagTilBasis(fRef.nøkkel, fRef.kat, fRef.navn);
@@ -1532,7 +1533,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v58-rydde-topp';
+  var APP_VERSJON = 'matplan-v59-aria-labels';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -2582,8 +2583,8 @@
         '<span class="basis-vare-navn">' + vare.navn + '</span>' +
         (mengdeTekst ? '<span class="basis-mengde-badge">' + mengdeTekst + '</span>' : '') +
         '<span class="basis-kat">' + katVis + '</span>' +
-        '<button class="basis-notat-knapp" onclick="toggleBasisRediger(this)" title="Rediger mengde og merknad">✏️</button>' +
-        '<button class="basis-slett" onclick="fjernFraBasis(' + i + ')">×</button>' +
+        '<button class="basis-notat-knapp" onclick="toggleBasisRediger(this)" title="Rediger mengde og merknad" aria-label="Rediger favoritt">✏️</button>' +
+        '<button class="basis-slett" onclick="fjernFraBasis(' + i + ')" aria-label="Slett favoritt">×</button>' +
         (vare.merknad ? '<span class="basis-merknad-tekst">' + vare.merknad + '</span>' : '') +
         '<div class="basis-rediger-panel">' +
           '<div class="basis-rediger-rad">' +
@@ -3365,7 +3366,7 @@
       rad.innerHTML =
         '<span class="ikon">🏠</span>' +
         '<span class="navn">' + h.navn + ' <span style="color:var(--muted);font-weight:normal">(' + antall + ')</span></span>' +
-        '<span class="handling" title="Åpne husstand" style="font-size:18px">›</span>';
+        '<span class="handling" title="Åpne husstand" aria-hidden="true" style="font-size:18px">›</span>';
       container.appendChild(rad);
     });
   }
@@ -3520,6 +3521,7 @@
         var gjørEier = document.createElement('button');
         gjørEier.className = 'husstand-medlem-eier';
         gjørEier.title = 'Gjør til eier';
+        gjørEier.setAttribute('aria-label', 'Gjør til eier');
         gjørEier.textContent = '⭐';
         gjørEier.onclick = function() { bekreftGjørTilEier(husstand.id, uid, visningsnavn); };
         rad.appendChild(gjørEier);
@@ -3527,6 +3529,7 @@
         var fjern = document.createElement('button');
         fjern.className = 'husstand-medlem-fjern';
         fjern.title = 'Fjern fra husstand';
+        fjern.setAttribute('aria-label', 'Fjern fra husstand');
         fjern.textContent = '✕';
         fjern.onclick = function() { bekreftFjernMedlem(husstand.id, uid, visningsnavn); };
         rad.appendChild(fjern);
