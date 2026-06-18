@@ -1533,7 +1533,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v62-opprydding';
+  var APP_VERSJON = 'matplan-v63-pervare-fase1';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -1757,6 +1757,7 @@
   function lagVareElement(navn, antall, enhet) {
     var mengdeTekst = formatMengde(antall, enhet);
     var li = document.createElement('li');
+    li.dataset.id = nyVareId(); // overstyres av byggListeFraData for lagrede varer
     li.innerHTML =
       '<span class="sjekk" onclick="hukAv(this)"></span>' +
       '<span class="mengde-badge ' + (mengdeTekst ? '' : 'tom') + '">' + mengdeTekst + '</span>' +
@@ -2794,8 +2795,35 @@
     return data;
   }
 
+  // Genererer en stabil vare-id (Firebase-nøkkel ved per-vare-skriving, Fase 2).
+  function nyVareId() {
+    return 'v-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+  }
+
+  // Normaliserer en kategoris varer til en array med id, uavhengig av om Firebase
+  // ga gammelt array-format eller nytt {vareId:{...}}-format. Bevarer rekkefølge.
+  function normaliserVarer(katData) {
+    if (Array.isArray(katData)) {
+      return katData.map(function(v, i) {
+        v = v || {};
+        return { id: v.id || nyVareId(), navn: v.navn, mengde: v.mengde, merknad: v.merknad, huket: !!v.huket, o: i };
+      });
+    }
+    if (katData && typeof katData === 'object') {
+      return Object.keys(katData).map(function(k) {
+        var v = katData[k] || {};
+        return { id: k, navn: v.navn, mengde: v.mengde, merknad: v.merknad, huket: !!v.huket, o: (typeof v.o === 'number' ? v.o : 0) };
+      }).sort(function(a, b) { return a.o - b.o; });
+    }
+    return [];
+  }
+
   function byggListeFraData(data) {
     var kategorier = aktiveKategoriIder();
+    data = data || {};
+    // Fase 1 (per-vare-sync): les begge lagringsformater. Normaliser hver
+    // kategori til en array med stabil id, så resten av funksjonen er uendret.
+    Object.keys(data).forEach(function(key) { data[key] = normaliserVarer(data[key]); });
 
     // Migrering: varer lagret i kategorier som ikke finnes i denne listetypen
     // (typisk etter typebytte) re-kategoriseres mot den nye typens ordlister.
@@ -2841,6 +2869,7 @@
         var antall = deler.length >= 2 ? deler[0] : '';
         var enhet  = deler.length >= 2 ? deler[1] : '';
         var li = lagVareElement(v.navn, antall, enhet);
+        li.dataset.id = v.id; // stabil id for per-vare-skriving (Fase 2)
         if (v.merknad) {
           var notat = document.createElement('span'); notat.className = 'notat-tekst'; notat.textContent = v.merknad;
           li.insertBefore(notat, li.querySelector('.rediger-panel'));
