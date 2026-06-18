@@ -3,7 +3,7 @@
       --surface:  #ffffff;
       --border:   #e0e0e0;
       --text:     #333;
-      --muted:    #888;
+      --muted:    #6a6a6a;
       --green:    #27ae60;
       --green-dk: #1e8a4a;
       --green-lt: #eef9f3;
@@ -32,8 +32,27 @@
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Synlig fokus-ring ved tastatur-/bryternavigasjon (vises IKKE ved muse-/
+       touch-trykk, så vanlig bruk forstyrres ikke). !important fordi mange felt
+       har outline:none. WCAG 2.4.7. */
+    :focus-visible {
+      outline: 2px solid var(--green) !important;
+      outline-offset: 2px;
+    }
+
+    /* Demp animasjoner for brukere som har slått på «Reduser bevegelse»
+       (iOS) / «Fjern animasjoner» (Android). WCAG 2.3.3. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
       /* Legg sikker-sone-insett (notch/home-indicator/cutout) til margene, så
