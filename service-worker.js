@@ -1,5 +1,5 @@
 // Service Worker for Handlekurven
-const CACHE_NAME = 'matplan-v61-p3-finpuss';
+const CACHE_NAME = 'matplan-v62-opprydding';
 const CACHE_URLS = ['./', './style.css', './app.js'];
 
 self.addEventListener('install', function(event) {

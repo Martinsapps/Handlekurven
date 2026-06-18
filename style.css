@@ -128,25 +128,6 @@
     }
     .tøm-knapp:hover { background: var(--red-bd); }
 
-    .basisliste-knapp {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 11px 14px;
-      background: var(--green-lt);
-      border: 1.5px solid var(--green-bd);
-      border-radius: 24px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--green-dk);
-      cursor: pointer;
-      margin-bottom: 8px;
-    }
-    .basisliste-knapp:hover { background: var(--green-bd); }
-    .basisliste-knapp .pil { font-size: 11px; transition: transform 0.2s; }
-    .basisliste-knapp .pil.åpen { transform: rotate(90deg); }
-
     .basisliste-panel {
       display: none;
       background: var(--green-lt);
@@ -392,6 +373,7 @@
     .skillelinje.tom { display: none; }
 
     li {
+      position: relative;
       display: flex; flex-wrap: wrap; align-items: center;
       gap: 7px; padding: 8px 12px; border-radius: 14px;
       font-size: 14px; color: var(--text); margin-bottom: 4px; background: var(--bg);
@@ -471,15 +453,11 @@
     }
     .notat-knapp:hover { color: var(--green); }
 
-    li { position: relative; }
-
     .slett {
       background: none; border: none; color: var(--muted);
       font-size: 20px; cursor: pointer; padding: 6px 10px; line-height: 1; flex-shrink: 0;
     }
     .slett:hover { color: var(--red); }
-
-    .skillelinje { border: none; border-top: 1px solid var(--border); margin: 4px 0 18px; }
 
     /* Tom-tilstand for en handleliste uten varer */
     .liste-tom { text-align: center; padding: 40px 16px; color: var(--muted); }
