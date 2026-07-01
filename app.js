@@ -1533,7 +1533,7 @@
   // ==============================
   // Versjons-streng som følger med tilbakemeldinger – bumpes manuelt sammen
   // med CACHE_NAME i service-worker.js.
-  var APP_VERSJON = 'matplan-v63-pervare-fase1';
+  var APP_VERSJON = 'matplan-v64-pervare-fase2a';
   var valgtTilbakemeldingType = 'feil';
 
   // Selv-helbredende HTML-sync: app.js hentes alltid ferskt (no-cache), men på
@@ -2784,6 +2784,7 @@
         var badge   = li.querySelector('.mengde-badge');
         var notat   = li.querySelector('.notat-tekst');
         varer.push({
+          id:      li.dataset.id || nyVareId(),
           navn:    li.querySelector('.vare-tekst').textContent.trim(),
           mengde:  badge ? badge.textContent.trim() : '',
           merknad: notat ? notat.textContent.trim() : '',
@@ -2793,6 +2794,24 @@
       data[id] = varer;
     });
     return data;
+  }
+
+  // Fase 2a: konverterer array-formatet fra hentData til per-vare-format
+  // {kat:{vareId:{navn,mengde,merknad,huket,o}}} for Firebase-skriving. Tomme
+  // kategorier utelates (Firebase pruner tomme noder → null).
+  function tilPerVareFormat(arrData) {
+    var ut = {};
+    Object.keys(arrData).forEach(function(kat) {
+      var arr = arrData[kat];
+      if (!Array.isArray(arr) || arr.length === 0) return;
+      var obj = {};
+      arr.forEach(function(v, i) {
+        var id = v.id || nyVareId();
+        obj[id] = { navn: v.navn, mengde: v.mengde || '', merknad: v.merknad || '', huket: !!v.huket, o: i };
+      });
+      ut[kat] = obj;
+    });
+    return ut;
   }
 
   // Genererer en stabil vare-id (Firebase-nøkkel ved per-vare-skriving, Fase 2).
@@ -2993,9 +3012,12 @@
     if (!aktivListeHydrert) return;
 
     var kontekst = aktivListeKontekst, listeId = aktivListeId;
+    // Fase 2a: skriv varer i per-vare-format (fortsatt heldokument/siste-vinner,
+    // hydrert-vakten beskytter). Første skriving konverterer lista fra array.
+    var varerUt = tilPerVareFormat(data);
     if (erKoblet && database && bruker) {
-      database.ref(kontekstSti(kontekst, 'lister/' + listeId + '/varer')).set(data).catch(function(err) {
-        leggTilOfflineKø('handleliste', data, kontekst, listeId);
+      database.ref(kontekstSti(kontekst, 'lister/' + listeId + '/varer')).set(varerUt).catch(function(err) {
+        leggTilOfflineKø('handleliste', varerUt, kontekst, listeId);
         loggFeil('Firebase lagringsfeil: ' + err.message, 'firebase', '');
       });
       database.ref(kontekstSti(kontekst, 'lister/' + listeId + '/basis')).set(basisVarer).catch(function(err) {
@@ -3003,7 +3025,7 @@
         loggFeil('Firebase basisliste-feil: ' + err.message, 'firebase', '');
       });
     } else {
-      leggTilOfflineKø('handleliste', data, kontekst, listeId);
+      leggTilOfflineKø('handleliste', varerUt, kontekst, listeId);
       leggTilOfflineKø('basisliste', basisVarer, kontekst, listeId);
     }
 
